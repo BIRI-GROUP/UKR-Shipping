@@ -1,4 +1,5 @@
 import { readFile } from 'node:fs/promises';
+import { addApprovedChinaRoutes } from './route-seed.mjs';
 const schema = await readFile(new URL('./schema.sql', import.meta.url), 'utf8');
 export async function postgresStore(connectionString) {
   const { Pool } = await import('pg');
@@ -11,6 +12,7 @@ export async function postgresStore(connectionString) {
     finally { client.release(); }
   };
   await store.tx(client => client.query(schema));
+  await addApprovedChinaRoutes(store);
   return store;
 }
 // In-memory SQLite exists only for automated/local tests. Production never falls back to it.

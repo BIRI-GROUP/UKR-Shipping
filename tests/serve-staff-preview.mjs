@@ -2,8 +2,10 @@
 import http from 'node:http';
 import { createHandler, hashPassword } from '../services/staff/server.mjs';
 import { testStore } from '../services/staff/store.mjs';
+import { addApprovedChinaRoutes } from '../services/staff/route-seed.mjs';
 process.env.NODE_ENV = 'test';
 const store = await testStore();
+await addApprovedChinaRoutes(store);
 const hash = await hashPassword('Local-test-only-482!');
 for (const [id, name, role] of [['test-owner', 'Test Owner', 'super_admin'], ['test-warehouse', 'Test Warehouse', 'china_warehouse']]) {
   await store.query('INSERT INTO staff_users (id,email,name,role,password_hash,active,created_at) VALUES ($1,$2,$3,$4,$5,1,$6)', [id, id + '@example.test', name, role, hash, Date.now()]);
