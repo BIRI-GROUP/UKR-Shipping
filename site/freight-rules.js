@@ -22,7 +22,7 @@
     if (!modes.includes(s.mode) || !cargoTypes.includes(s.cargoType)) return 'Choose a valid freight mode and cargo type.';
     if (!validNumber(s.weight, 0.01, 10000000)) return 'Enter a valid weight greater than zero.';
     if (s.cargoType !== 'container' && !validNumber(s.cbm, 0.01, 100000)) return 'Enter a valid volume greater than zero.';
-    if (s.cargoType === 'container' && (!['20GP', '40GP', '40HC'].includes(s.containerSize) || !Number.isInteger(Number(s.containers)) || !validNumber(s.containers, 1, 100))) return 'Choose container equipment and a whole quantity from 1 to 100.';
+    if (s.cargoType === 'container' && (!['20GP', '40GP', '40HC','45HC'].includes(s.containerSize) || !Number.isInteger(Number(s.containers)) || !validNumber(s.containers, 1, 100))) return 'Choose container equipment and a whole quantity from 1 to 100.';
     if (s.cargoType === 'container' && ['air', 'compare'].includes(s.mode)) return 'Full containers require sea or road service.';
     return '';
   }

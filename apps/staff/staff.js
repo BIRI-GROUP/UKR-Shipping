@@ -55,7 +55,7 @@ async function enterWorkspace() {
   const nav = $('staffNav'); nav.replaceChildren();
   const add = (label, key, action) => { const b = button(label, async () => { $('appError').textContent = ''; $('appSuccess').textContent = ''; nav.querySelectorAll('button').forEach(x => x.classList.remove('active')); b.classList.add('active'); await action(); }, ''); b.dataset.page = key; nav.append(b); };
   add('Overview', 'overview', dashboard);
-  if (me.canManageRates) add('Weekly rates', 'rates', ratesPage);
+  if (me.canManageRates) { add('Routes & services', 'routes', routesPage); add('Weekly rates & Excel', 'rates', ratesPage); }
   if (me.canReadBookings) add('Website bookings', 'website-bookings', bookingsPage);
   for (const module of me.modules) add(module.label, module.key, () => queue(module.key));
   if (me.canManageUsers) add('Staff & invitations', 'users', usersPage);

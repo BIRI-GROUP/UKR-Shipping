@@ -1,11 +1,12 @@
 'use strict';
 let tariffData = null;
-const tariffProducts = {FCL20:'Sea · 20′ container',FCL40:'Sea · 40′ container',FCL40HC:'Sea · 40′ high cube',LCL:'Sea · LCL',LCL_DDP:'Sea · LCL DDP',AIR:'Air cargo',AIR_DDP:'Air · DDP',ROAD_LTL:'Road · Shared truck'};
+const tariffProducts = {AIR:'Air cargo',LCL:'LCL',LCL_DDP:'DDP*',FCL20:'20ft container',FCL40:'40ft DC / HC',FCL45:'45ft container',AIR_DDP:'Air DDP*',ROAD_LTL:'Shared truck',FCL40HC:'40ft HC (legacy)'};
 const tariffPlaces = ['Ningbo, China','Shanghai, China','Shenzhen, China','Guangzhou, China','Qingdao, China','Xiamen, China','Tianjin, China','Jebel Ali, UAE','Dubai, UAE','Abu Dhabi, UAE','DXB Airport, UAE','DWC Airport, UAE','Jeddah, Saudi Arabia','Dammam, Saudi Arabia','Riyadh, Saudi Arabia','Doha, Qatar','Kuwait City, Kuwait','Sohar, Oman','Salalah, Oman'];
 const priceText = (amount,currency) => new Intl.NumberFormat('en',{style:'currency',currency}).format(amount);
 function rateStatus(r) { return !r.published?'Draft':r.validTo<new Date().toISOString().slice(0,10)?'Expired':'Published'; }
 async function ratesPage() {
   const content=page('Weekly rates'); tariffData=await api('/rates');
+  addExcelTools(content);
   const intro=panel('Your buying cost. Your selling price.','Enter a tariff, set its validity and markup, then publish it to the website. Customer estimates never include buying costs or private notes.');
   intro.append(button('＋ Add a rate',()=>editTariff(), 'primary'));content.append(intro);
   const toolbar=element('div',undefined,'tariff-toolbar'), search=element('input');search.type='search';search.placeholder='Filter by route or product';search.setAttribute('aria-label','Filter rates');toolbar.append(search,element('span',`${tariffData.rates.length} saved rates`,'helper'));content.append(toolbar);
@@ -29,7 +30,9 @@ function tariffField(form,key,label,value,type='text',options=null,help='') {
   if(!['publicNotes','internalNotes','deliveryArea'].includes(key))input.required=true;
   wrap.append(lab,input);if(help)wrap.append(element('p',help,'helper'));form.append(wrap);return input;
 }
-function editTariff(rate=null) {
+async function editTariff(rate=null) {
+  const {routes}=await api('/routes');
+  if(!rate&&!routes.some(r=>r.active)){await routesPage();$('appSuccess').textContent='Add your permanent service route first.';return;}
   const start=new Date().toISOString().slice(0,10),end=new Date(Date.now()+6*86400000).toISOString().slice(0,10);
   const r=rate||{origin:'Ningbo, China',destination:'Jebel Ali, UAE',product:'LCL',label:'',validFrom:start,validTo:end,currency:'USD',buyRate:'',markupType:'percent',markup:'',basis:'wm',minimumUnits:1,rounding:.01,minimumCharge:0,kgPerCbm:475,volumetricDivisor:6000,originFee:0,destinationFee:0,documentationFee:0,maxWeight:'',maxCbm:'',maxDensity:0,inclusions:'',exclusions:'',bookingMode:'review',responseMinutes:60,published:false};
   const content=page(rate?.id?'Edit weekly rate':'Add weekly rate');content.append(button('← All rates',ratesPage));
@@ -37,6 +40,8 @@ function editTariff(rate=null) {
   const fields={};
   function section(title){form.append(element('h2',title));const g=element('div',undefined,'tariff-grid');form.append(g);return g;}
   let g=section('1. Route & week');
+  const routeOptions=Object.fromEntries(routes.map(r=>[r.id,r.origin+' → '+r.destination]));if(rate&&!rate.routeId)routeOptions['']='Existing unlinked tariff';
+  fields.routeId=tariffField(g,'routeId','Permanent service route',rate&&!rate.routeId?'':r.routeId||Object.keys(routeOptions)[0],'text',routeOptions);if(rate&&!rate.routeId)fields.routeId.required=false;
   for(const [key,label,type,opts] of [['origin','Origin','text'],['destination','Destination','text'],['product','Product','text',tariffProducts],['label','Customer service name','text'],['validFrom','Valid from (cargo ready)','date'],['validTo','Valid through','date'],['currency','Currency','text',{USD:'USD',AED:'AED',CNY:'CNY',EUR:'EUR',GBP:'GBP'}]]) fields[key]=tariffField(g,key,label,r[key]||(key==='label'?tariffProducts[r.product]:''),type,opts);
   g=section('2. Buying cost & markup');
   fields.buyRate=tariffField(g,'buyRate','Buying cost per chargeable unit',r.buyRate,'number');fields.markupType=tariffField(g,'markupType','Markup method',r.markupType,'text',{percent:'Percentage added to buying cost',fixed:'Fixed amount added per unit'});fields.markup=tariffField(g,'markup','Markup',r.markup,'number');
@@ -46,10 +51,14 @@ function editTariff(rate=null) {
   g=section('3. Charging & cargo rules');
   fields.basis=tariffField(g,'basis','Chargeable quantity',r.basis,'text',{container:'Per container',wm:'Higher of CBM or weight ÷ kg/CBM',cbm:'CBM only',actual_kg:'Actual kilograms',volumetric_kg:'Higher of actual or volumetric kg'});
   for(const [key,label,help] of [['kgPerCbm','Kilograms per CBM','Sea shared cargo: 475. Trucks: select 300 or 350 to match your tariff.'],['volumetricDivisor','Air volumetric divisor','Volume in cm³ ÷ divisor; default 6000.'],['minimumUnits','Minimum chargeable quantity','Applied before rounding.'],['rounding','Round quantity up to','For example 0.01 CBM or 1 kg.'],['minimumCharge','Minimum freight charge','In the selected currency.'],['maxWeight','Maximum gross weight (kg)','For FCL: per container. Other services: per shipment. Enter the approved operational limit.'],['maxCbm','Maximum shipment CBM','Not applied to full containers.'],['maxDensity','Maximum density (kg/CBM)','0 means no additional density limit. This is separate from the charging conversion.']])fields[key]=tariffField(g,key,label,r[key],'number',null,help);
-  function productChanged(){const p=fields.product.value;fields.label.value=tariffProducts[p];fields.basis.value=p.startsWith('FCL')?'container':p.startsWith('AIR')?'volumetric_kg':'wm';fields.kgPerCbm.value=p==='ROAD_LTL'?350:475;fields.rounding.value=p.startsWith('AIR')?1:.01;fields.minimumUnits.value=1;}
+  function productChanged(){const p=fields.product.value;fields.label.value=tariffProducts[p];fields.basis.value=p.startsWith('FCL')?'container':p.startsWith('AIR')?'volumetric_kg':'wm';fields.kgPerCbm.value=p==='ROAD_LTL'?350:475;fields.rounding.value=p.startsWith('AIR')||p.startsWith('FCL')?1:.01;fields.minimumUnits.value=p.startsWith('AIR')?5:1;}
   fields.product.addEventListener('change',productChanged);
+  function routeChanged(initial=false){const chosen=routes.find(r=>r.id===fields.routeId.value);if(!chosen)return;fields.origin.value=chosen.origin;fields.destination.value=chosen.destination;fields.origin.readOnly=true;fields.destination.readOnly=true;const old=fields.product.value;fields.product.replaceChildren();for(const p of chosen.products){const o=element('option',tariffProducts[p]);o.value=p;fields.product.append(o);}fields.product.value=chosen.products.includes(old)?old:chosen.products[0];if(!initial||!rate)productChanged();}
+  fields.routeId.addEventListener('change',()=>routeChanged());routeChanged(true);
+  fields.containerCbm=tariffField(g,'containerCbm','Container planning capacity (CBM)',r.containerCbm||0,'number',null,'Enter usable capacity for the 85% container suggestion. For combined 40ft pricing use the smaller DC capacity. 0 disables suggestions.');
   g=section('4. Extra customer charges');g.append(element('p','These are selling charges per shipment, added after freight. Use 0 when included in your unit price.','helper wide'));
   for(const [key,label] of [['originFee','Origin charges'],['destinationFee','Destination charges'],['documentationFee','Documentation']])fields[key]=tariffField(g,key,label,r[key],'number');
+  fields.exwFrom=tariffField(g,'exwFrom','EXW pickup + export customs from',r.exwFrom??'','number',null,'Customer selling charge per shipment. Blank = quotation required; 0 = included. Subject to supplier address and cargo confirmation.');fields.exwFrom.required=false;
   g=section('5. Scope & conditions');
   for(const [key,label] of [['inclusions','Included in this estimate'],['exclusions','Excluded / payable separately'],['deliveryArea','DDP delivery area / postcode limits'],['publicNotes','Customer conditions'],['internalNotes','Private purchasing notes — never shown to customers']])fields[key]=tariffField(g,key,label,r[key]||'','textarea');
   const ddp=element('label',undefined,'check-row');const ddpCheck=element('input');ddpCheck.type='checkbox';ddpCheck.checked=!!r.ddpConfirmed;ddp.append(ddpCheck,document.createTextNode('DDP delivery coverage and duties/tax treatment are confirmed and described above.'));form.append(ddp);

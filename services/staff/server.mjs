@@ -44,9 +44,9 @@ async function consumeLimit(store, key, limit, minutes = 15) {
     return true;
   });
 }
-async function body(req) {
+async function body(req,max=32768) {
   if (!req.headers['content-type']?.startsWith('application/json')) fail(415, 'Send JSON.');
-  let value = ''; for await (const chunk of req) { value += chunk; if (Buffer.byteLength(value) > 32768) fail(413, 'Request too large.'); }
+  let value = ''; for await (const chunk of req) { value += chunk; if (Buffer.byteLength(value) > max) fail(413, 'Request too large.'); }
   try { const parsed = JSON.parse(value); if (!parsed || Array.isArray(parsed) || typeof parsed !== 'object') throw new Error(); return parsed; } catch { fail(400, 'Invalid request.'); }
 }
 const files = {
@@ -55,6 +55,7 @@ const files = {
   '/staff.css': ['../../apps/staff/staff.css', 'text/css; charset=utf-8'],
   '/commerce.js': ['../../apps/staff/commerce.js', 'text/javascript; charset=utf-8'],
   '/commerce.css': ['../../apps/staff/commerce.css', 'text/css; charset=utf-8'],
+  '/route-admin.js': ['../../apps/staff/route-admin.js', 'text/javascript; charset=utf-8'],
   '/logo.svg': ['../../site/assets/ukr-shipping-blue.svg', 'image/svg+xml']
 };
 export async function createHandler({ store, origin, publicOrigin = 'https://ukr-shipping-preview.onrender.com', ownerEmail = '', setupTokenHash = '', setupExpires = 0, secure = true }) {
@@ -103,7 +104,8 @@ export async function createHandler({ store, origin, publicOrigin = 'https://ukr
       if (!store) fail(503, 'Staff sign-in is awaiting its dedicated database. No accounts or passwords can be saved yet.');
       const mutation = !['GET', 'HEAD'].includes(method);
       if (mutation && req.headers.origin !== origin) fail(403, 'Untrusted request origin.');
-      let data = mutation ? await body(req) : {};
+      if (mutation && route.startsWith('/api/rate-workbook')) { const uploader=await session(req,true); if(uploader.role!=='super_admin')fail(403,'Only Super Admin can import rates.'); }
+      let data = mutation ? await body(req,route.startsWith('/api/rate-workbook')?1500000:32768) : {};
       if (['/api/login', '/api/setup', '/api/accept-invite', '/api/reset-password'].includes(route) && method === 'POST') {
         if (!await consumeLimit(store, 'auth-global', 100)) fail(429, 'Too many attempts. Try again in 15 minutes.');
         if (!await consumeLimit(store, 'auth:' + digest(email(data.email)), 8)) fail(429, 'Too many attempts. Try again in 15 minutes.');

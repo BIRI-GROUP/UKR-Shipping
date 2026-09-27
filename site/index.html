@@ -9,16 +9,17 @@
 <link rel="preconnect" href="https://images.unsplash.com">
 <link rel="stylesheet" href="styles.css?v=blue-20260927">
 <link rel="stylesheet" href="quote-flow.css?v=weekly-rates-1">
+<link rel="stylesheet" href="route-tools.css?v=routes-1">
 </head>
 <body>
 <header class="header">
   <a class="brand" href="#home"><img class="brand-logo" src="assets/ukr-shipping-blue.svg" width="2172" height="724" alt="UKR Shipping"></a>
   <nav>
-    <a href="#book">Book</a><a href="#services">Services</a><a href="#track">Track</a><a href="#tools">Tools</a><a href="https://ukr-staff-staging.onrender.com/">Staff login</a>
+    <a href="#book" onclick="returnToQuick()">Routes</a><a href="#services">Services</a><a href="#track">Track</a><a href="#magicTool" onclick="openMagic()">Magic tool</a><a href="https://ukr-staff-staging.onrender.com/">Staff login</a>
   </nav>
   <div class="header-actions"><button class="link-btn" onclick="showPortal()">Customer Preview</button><button class="gold-btn" onclick="scrollBook()">Get a Quote</button></div>
 </header>
-<nav class="mobile-nav" aria-label="Mobile navigation"><a href="#book">Quote</a><a href="#services">Services</a><a href="#track">Track</a><a href="#draftsSection">My drafts</a><a href="https://ukr-staff-staging.onrender.com/">Staff login</a></nav>
+<nav class="mobile-nav" aria-label="Mobile navigation"><a href="#book" onclick="returnToQuick()">Routes</a><a href="#services">Services</a><a href="#track">Track</a><a href="#draftsSection">My drafts</a><a href="https://ukr-staff-staging.onrender.com/">Staff login</a></nav>
 <p class="staging-notice">UKR staging · Published weekly rates power estimates. Submitted booking requests reach the UKR team. No online payment.</p>
 
 <main id="home">
@@ -28,11 +29,23 @@
     <div class="hero-copy">
       <span class="kicker">UAE • CHINA • GCC • WORLDWIDE</span>
       <h1>Shipping, made as easy as booking a flight.</h1>
-      <p>Compare freight services, tell us about your cargo and prepare your quotation request. Built around the way you ship.</p>
+      <p>Choose your route. See air, sea and container options at a glance. Add your cargo details whenever you’re ready for an estimate.</p>
       <div class="hero-points"><span>China → UAE LCL DDP</span><span>Air Cargo</span><span>FCL</span><span>GCC Road</span></div>
     </div>
 
-    <div class="booking-card" id="book">
+    <div class="booking-card quick-book" id="book">
+      <span class="kicker dark-kicker">YOUR ROUTE, ALL OPTIONS</span><h2>Where are you shipping?</h2>
+      <p>Start with a city, port or country.</p>
+      <form id="quickSearchForm">
+        <div class="route-discovery-grid"><div class="field"><label for="quickOrigin">Port of loading or city</label><input id="quickOrigin" list="routePlaces" maxlength="120" required placeholder="e.g. Ningbo"></div><div class="field"><label for="quickDestination">Port of discharge or city</label><input id="quickDestination" list="routePlaces" maxlength="120" required placeholder="e.g. Dubai"></div><div class="field"><label for="quickReady">Cargo ready date</label><input id="quickReady" type="date" required></div></div>
+        <datalist id="routePlaces"></datalist><p id="quickError" class="inline-error" role="alert"></p>
+        <button class="search-btn" type="submit">Show me all options →</button>
+      </form>
+      <div class="quick-links"><button class="secondary-btn" type="button" onclick="beginEstimate()">Help me estimate my shipping cost</button><button class="link-btn" type="button" onclick="openMagic()">✦ Magic tool — is it worth importing?</button></div>
+      <p class="form-note">Starting prices come from UKR’s published tariffs. Select an option to estimate your actual shipment.</p>
+    </div>
+    <div class="booking-card hidden" id="estimateBook">
+      <div class="estimator-heading"><h2>Estimate my shipment</h2><button class="link-btn" type="button" onclick="returnToQuick()">← Route overview</button></div>
       <div class="mode-tabs" role="group" aria-label="Freight mode">
         <button class="mode active" aria-pressed="true" data-mode="compare" onclick="chooseMode(this)">Compare Air & Sea</button>
         <button class="mode" aria-pressed="false" data-mode="sea" onclick="chooseMode(this)">Sea</button>
@@ -64,10 +77,11 @@
       </div>
 
       <div id="containerFields" class="booking-grid hidden">
-<div class="field"><label for="containerSize">Equipment</label><select id="containerSize"><option value="20GP">20′ standard</option><option value="40GP">40′ standard</option><option value="40HC">40′ high cube</option></select></div>
+<div class="field"><label for="containerSize">Equipment</label><select id="containerSize"><option value="20GP">20ft</option><option value="40GP">40ft DC</option><option value="40HC">40ft HC (same rate)</option><option value="45HC">45ft</option></select></div>
 <div class="field"><label for="containers">Containers</label><input id="containers" type="number" min="1" max="100" step="1" value="1"></div></div>
 <p id="modeNotice" class="mode-notice" role="status"></p>
 <div class="quick-row">
+        <label class="check"><input id="exw" type="checkbox"> Buying EXW?</label><span class="exw-help"><button type="button" class="term-help" aria-describedby="exwMeaning">EXW meaning ⓘ</button><span id="exwMeaning" role="tooltip">Ex Works: your supplier makes goods available at their premises. You arrange transport and export clearance. UKR can arrange pickup + export customs from the published starting charge, subject to address and cargo confirmation.</span></span>
         <label class="check"><input id="ddp" type="checkbox"> Door delivery requested</label>
         <label class="check"><input id="flex" type="checkbox"> Flexible date for Smart Shipping</label>
       </div>
@@ -78,6 +92,23 @@
     </div>
   </div>
 </section>
+
+<section id="quickResults" class="route-section hidden" aria-labelledby="quickResultsHeading"><div class="section-head"><div><span class="kicker dark-kicker">QUICK VIEW</span><h2 id="quickResultsHeading">Your shipping options</h2><p id="quickRouteSummary"></p></div><button class="secondary-btn" onclick="beginEstimate()">Help me estimate the cost</button></div><div id="quickRouteCards" aria-live="polite"></div><p class="route-footnote">* DDP is subject to final approval of goods value and commodity. Starting rates are per listed unit; shipment minimums, extra charges and conditions apply.</p></section>
+
+<section id="magicTool" class="route-section hidden" aria-labelledby="magicHeading"><div class="section-head"><div><span class="kicker dark-kicker">MAGIC TOOL</span><h2 id="magicHeading">Is this item worth importing?</h2><p>Compare the estimated cost per item by air and sea. At 85% of a container’s planning capacity, we’ll also show an eligible container option.</p></div></div>
+<form id="magicForm" class="magic-form"><div class="magic-grid">
+<div class="field wide"><label for="magicRoute">Service route</label><select id="magicRoute" required><option value="">Choose an active route</option></select></div>
+<div class="field"><label for="magicCurrency">Currency for all item costs</label><select id="magicCurrency"><option>USD</option><option>AED</option><option>CNY</option><option>EUR</option><option>GBP</option></select></div>
+<div class="field"><label for="magicReady">Cargo ready</label><input id="magicReady" type="date" required></div>
+<div class="field"><label for="magicCost">Buying cost per item</label><input id="magicCost" type="number" min="0.01" step="0.01" required></div>
+<div class="field"><label for="magicQuantity">Number of items</label><input id="magicQuantity" type="number" min="1" step="1" required></div>
+<div class="field"><label for="magicLength">Packed length per item (cm)</label><input id="magicLength" type="number" min="0.01" step="any" required></div>
+<div class="field"><label for="magicWidth">Packed width per item (cm)</label><input id="magicWidth" type="number" min="0.01" step="any" required></div>
+<div class="field"><label for="magicHeight">Packed height per item (cm)</label><input id="magicHeight" type="number" min="0.01" step="any" required></div>
+<div class="field"><label for="magicWeight">Packed weight per item (kg)</label><input id="magicWeight" type="number" min="0.01" step="any" required></div>
+<div class="field"><label for="magicSelling">Expected selling price per item (optional)</label><input id="magicSelling" type="number" min="0" step="0.01"></div>
+<div class="field"><label for="magicExtras">Other costs for the whole shipment</label><input id="magicExtras" type="number" min="0" step="0.01" value="0"><small>Add any duty, tax, insurance or local costs excluded from the tariff.</small></div>
+</div><label class="check"><input id="magicExw" type="checkbox"> Include the EXW pickup + export customs starting charge</label><p id="magicError" class="inline-error" role="alert"></p><button class="gold-btn" type="submit">Compare my item’s shipped cost →</button><p class="details-note">Enter packed dimensions, including packaging. All input costs and matching tariffs must use the selected currency; we do not assume exchange rates.</p></form><div id="magicResults" aria-live="polite"></div></section>
 
 <section class="trustbar">
   <div><b>One UKR Shipment ID</b><span>From quote to POD</span></div>
@@ -157,7 +188,7 @@
   <div id="draftList"></div><p id="draftListError" class="inline-error" role="alert"></p>
 </section>
 
-<section class="smart-section" id="tools">
+<section class="smart-section hidden" id="tools" aria-hidden="true">
   <div class="smart-copy"><span class="kicker dark-kicker">SMART SHIPPING</span><h2>Know your landed cost before you sell.</h2><p>Estimate shipping per item and model your target selling price. Use your own logistics estimate to compare target margins. Duties, taxes and other costs are included only if you enter them.</p></div>
   <div class="calc-card">
     <div class="calc-grid">
@@ -201,6 +232,7 @@
 
 </main>
 <footer><div class="brand"><img class="brand-logo" src="assets/ukr-shipping-blue.svg" width="2172" height="724" alt="UKR Shipping"></div><p>Trade & Logistics Platform • UAE</p><p class="footer-note">Staging • Connected rates and booking requests • No online payment</p></footer>
-<script src="freight-rules.js?v=1"></script>
-<script src="quote-flow.js?v=weekly-rates-1"></script>
+<script src="freight-rules.js?v=2"></script>
+<script src="quote-flow.js?v=routes-2"></script>
+<script src="route-tools.js?v=routes-1"></script>
 </body></html>

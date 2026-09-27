@@ -52,7 +52,7 @@ test('rates → public calculation → booking → staff review integration',asy
   await t.test('weekly publication and sensitive-field exclusion',async()=>{
     saved=await req('/rates','POST',rateInput(),owner);assert.equal(saved.status,201);
     assert.equal((await req('/rates','POST',rateInput(),owner)).status,409);
-    const catalog=await req('/public/catalog','GET',null,null,publicOrigin);assert.equal(catalog.data.routes.length,1);assert.equal(JSON.stringify(catalog.data).includes('buyRate'),false);
+    const catalog=await req('/public/catalog','GET',null,null,publicOrigin);assert.equal(catalog.data.legacyLocations.length,1);assert.equal(JSON.stringify(catalog.data).includes('buyRate'),false);
     const quote=await req('/public/estimate','POST',{search:cargoInput()},null,publicOrigin);assert.equal(quote.status,200);assert.equal(quote.data.offers[0].total,385);
     assert.equal(JSON.stringify(quote.data).includes('PRIVATE'),false);assert.equal(JSON.stringify(quote.data).includes('buyRate'),false);
     assert.equal((await req('/rates/'+saved.data.id,'PATCH',{...rateInput(),version:99},owner)).status,409);

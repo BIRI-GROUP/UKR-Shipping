@@ -59,24 +59,25 @@ function cargoChanged() {
   setMode(mode);
 }
 function swapRoute() {
+  chosenRouteId='';
   const origin = $('origin').value;
   $('origin').value = $('destination').value; $('destination').value = origin;
   invalidateSearch();
 }
-function scrollBook() { jump('book'); }
+function scrollBook() { show('book');show('estimateBook',false);jump('book'); }
 function newRequest() {
   invalidateSearch();
   $('quoteDetails').reset();
   error('searchError', ''); error('detailsError', ''); error('draftError', '');
   scrollBook();
 }
-function editSearch() { invalidateSearch(); scrollBook(); }
-function prefill(value) { invalidateSearch(); setMode(value); scrollBook(); }
+function editSearch() { invalidateSearch(); show('estimateBook'); show('book',false); jump('estimateBook'); }
+function prefill(value) { beginEstimate(); setMode(value); }
 function readSearch() {
   return { origin: $('origin').value.trim(), destination: $('destination').value.trim(), ready: $('ready').value,
     weight: $('weight').value, cbm: $('cbm').value, cargoType: $('cargoType').value, mode,
     containerSize: $('containerSize').value, containers: $('containers').value,
-    ddp: $('ddp').checked, flex: $('flex').checked };
+    ddp: $('ddp').checked, flex: $('flex').checked, exw: $('exw').checked, routeId: typeof chosenRouteId==='undefined'?'':chosenRouteId };
 }
 function cargoSummary(s) {
   return s.cargoType === 'container' ? `${s.containers} × ${s.containerSize} · ${Number(s.weight).toLocaleString()} kg total` : `${Number(s.weight).toLocaleString()} kg · ${Number(s.cbm).toLocaleString()} CBM · ${s.cargoType}`;
@@ -122,6 +123,7 @@ async function loadRateOptions() {
     details.append(node('summary',offer.rateId?'Calculation & inclusions':'What needs confirmation?'));
     if(offer.rateId){details.append(node('p',offer.formula+` · Minimum ${offer.minimumUnits} · Rounded up to ${offer.rounding} ${offer.unit}`));for(const line of offer.charges)details.append(node('p',`${line.label}: ${new Intl.NumberFormat('en',{style:'currency',currency:offer.currency}).format(line.amount)}`));details.append(node('p','Included: '+offer.inclusions),node('p','Excluded: '+offer.exclusions));if(offer.deliveryArea)details.append(node('p','Delivery area: '+offer.deliveryArea));if(offer.notes)details.append(node('p',offer.notes));for(const reason of offer.reasons)details.append(node('p',reason));}
     details.append(node('p','Final cargo measurements and carrier allocation require verification. A UKR booking is separate from carrier confirmation.'));
+    if(offer.approvalNote)details.append(node('p',offer.approvalNote));
     if(searchState.ddp&&!offer.product?.endsWith('DDP'))details.append(node('p','Door delivery requested: this tariff is not a DDP/door quote. Additional scope requires staff confirmation.'));
     article.append(title, availability, price, button, details);
     $('optionCards').append(article);
@@ -150,7 +152,7 @@ function openServiceInquiry(kind) {
   const input = readSearch();
   const problem = R.validateSearch(input);
   error('searchError', problem);
-  if (problem) { scrollBook(); return; }
+  if (problem) { show('estimateBook');show('book',false);jump('estimateBook'); return; }
   searchState = input;
   const offer = kind === 'customs' ? { id: 'customs', title: 'Customs Clearance', description: 'Document and clearance review', status: 'REQUEST_ONLY' } : { id: 'china', title: 'China Operations', description: 'Pickup, warehouse and consolidation inquiry', status: 'REQUEST_ONLY' };
   selectOffer(offer);
@@ -207,6 +209,7 @@ function showReview() {
   $('reviewContent').replaceChildren();
   addReviewGroup('Route & service', [['Service', selectedOffer.title], ['Route', `${s.origin} → ${s.destination}`], ['Cargo ready', s.ready], ['Cargo', cargoSummary(s)], ['Delivery scope',selectedOffer.scope || (s.ddp ? 'Door delivery requested' : 'Port / airport / terminal')], ['Flexible date', s.flex ? 'Yes' : 'No'], ['Estimate',selectedOffer.rateId?offerMoney(selectedOffer):'Awaiting UKR quotation'],['Booking',selectedOffer.bookingMode==='auto'&&selectedOffer.status==='ESTIMATE'&&(!s.ddp||selectedOffer.product?.endsWith('DDP'))?'Automatic UKR acceptance for declared eligible cargo':`Staff confirmation target: ${selectedOffer.responseMinutes||60} minutes`]]);
   if(selectedOffer.rateId){addReviewGroup('Calculation & tariff terms',[['Calculation',selectedOffer.formula],['Chargeable quantity',selectedOffer.quantity+' '+selectedOffer.unit],['Included',selectedOffer.inclusions],['Excluded',selectedOffer.exclusions],['Delivery area',selectedOffer.deliveryArea||'See service scope'],['Conditions',selectedOffer.notes||selectedOffer.notice]]);}
+  if(selectedOffer.approvalNote)addReviewGroup('Approval required',[['Before confirmation',selectedOffer.approvalNote]]);
   addReviewGroup('Cargo & handling', [['Commodity', d.commodity], ['Packages', d.packages], ['Declared value', d.declaredValue === '' ? 'Not provided' : money(Number(d.declaredValue))], ['Dimensions', d.dimensions], ['Stackable', d.stackable ? 'Yes' : 'No'], ['Batteries', d.batteries ? 'Yes' : 'No'], ['Dangerous goods', d.dangerous ? 'Yes' : 'No'], ['Heavy / oversized', d.oversized ? 'Yes' : 'No'], ['Pickup', d.pickupAddress], ['Delivery', d.deliveryAddress], ['Notes', d.cargoNotes]]);
   addReviewGroup('Contact', [['Name', d.contactName], ['Company', d.company], ['Email', d.contactEmail], ['Phone / WhatsApp', d.contactPhone]]);
   const flags = R.reviewFlags(d);
@@ -259,6 +262,7 @@ async function openDraft(id) {
   const draft = drafts.find(d => d.id === id); if (!draft) return;
   const s = draft.search;
   ['origin', 'destination', 'ready', 'weight', 'cbm', 'cargoType', 'containerSize', 'containers'].forEach(key => { $(key).value = s[key] ?? ''; });
+  chosenRouteId=s.routeId||''; $('exw').checked=!!s.exw;
   $('ddp').checked = s.ddp; $('flex').checked = s.flex;
   cargoChanged(); setMode(s.mode); searchState = { ...s };
   if (R.validateSearch(searchState)) { error('searchError', 'This draft needs an updated cargo-ready date. Update the search and choose a service again; cargo details are retained.'); }
@@ -295,7 +299,7 @@ function trackShipment() {
 const ready = new Date(); ready.setDate(ready.getDate() + 2);
 $('ready').min = R.localDate(); $('ready').value = R.localDate(ready);
 $('quoteDetails').addEventListener('submit', reviewRequest);
-['origin', 'destination', 'ready', 'weight', 'cbm', 'containerSize', 'containers', 'ddp', 'flex'].forEach(id => $(id).addEventListener('input', invalidateSearch));
+['origin', 'destination', 'ready', 'weight', 'cbm', 'containerSize', 'containers', 'ddp', 'flex','exw'].forEach(id => $(id).addEventListener('input', invalidateSearch));
 $('quoteDetails').addEventListener('input', () => { show('savedNotice', false); });
 loadDrafts();
 publicRequest('/catalog').then(data=>{const places=new Set([...$('places').options].map(o=>o.value));for(const route of data.routes)for(const location of [route.origin,route.destination])if(!places.has(location)){const option=node('option');option.value=location;$('places').append(option);places.add(location);}}).catch(()=>{});

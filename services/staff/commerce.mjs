@@ -1,5 +1,8 @@
 import { randomUUID, createHash } from 'node:crypto';
 import { products, currencies, validateRate, validateCargo, validateContact, estimate, routeKey, today } from './rates.mjs';
+import { readRoutes, validateRoute, resolveRoutes, canonicalCargo, quickOptions, magicCosts, decodeRate, enabledRate } from './routes.mjs';
+import { saveRate } from './rate-records.mjs';
+import { workbookApi } from './rate-workbook.mjs';
 const hash = x => createHash('sha256').update(x).digest('hex');
 const fail = (status,message) => { const e=new Error(message);e.status=status;throw e; };
 const unpack = row => ({...JSON.parse(row.data),id:row.id,version:row.version,updatedAt:Number(row.updated_at)});
@@ -19,17 +22,26 @@ export async function publicCommerce({req,url,store,origin,publicOrigin,body,jso
   const route=url.pathname,method=req.method;
   if (route==='/api/public/catalog' && method==='GET') {
     const rows=(await store.query('SELECT * FROM freight_rates WHERE published=1 AND valid_to >= $1 ORDER BY origin_key,destination_key,product',[today()])).rows;
-    return json({routes:rows.map(row=>{const r=unpack(row);return {origin:r.origin,destination:r.destination,product:r.product,validFrom:r.validFrom,validTo:r.validTo};})}),true;
+    const routes=(await readRoutes(store)).filter(r=>r.active);
+    return json({routes:routes.map(({version,...r})=>r),legacyLocations:rows.map(row=>{const r=unpack(row);return {origin:r.origin,destination:r.destination};})}),true;
   }
-  if (method!=='POST' || !['/api/public/estimate','/api/public/bookings'].includes(route)) fail(404,'Not found.');
+  if (method!=='POST' || !['/api/public/estimate','/api/public/bookings','/api/public/quick','/api/public/magic'].includes(route)) fail(404,'Not found.');
   if (!allowed.includes(req.headers.origin)) fail(403,'Untrusted request origin.');
   const data=await body(req);
   if (data.website) fail(400,'Unable to process this request.');
-  if (!await consumeLimit(store,route==='/api/public/estimate'?'public-estimates':'public-bookings',route==='/api/public/estimate'?500:100)) fail(429,'Too many requests. Please try again later.');
-  const cargo=validateCargo(data.search||{});
+  if (!await consumeLimit(store,route==='/api/public/bookings'?'public-bookings':'public-estimates',route==='/api/public/bookings'?100:500)) fail(429,'Too many requests. Please try again later.');
+  const routes=await readRoutes(store);
+  if(route==='/api/public/quick'||route==='/api/public/magic'){
+    const search=data.search||{};if(typeof search.origin!=='string'||typeof search.destination!=='string'||search.origin.length>120||search.destination.length>120)fail(400,'Enter loading and discharge locations.');
+    const matching=resolveRoutes(routes,search),rates=(await store.query('SELECT * FROM freight_rates WHERE published=1 AND valid_to >= $1',[today()])).rows.map(decodeRate);
+    if(route==='/api/public/quick'){const ready=search.ready||today();if(!/^\d{4}-\d{2}-\d{2}$/.test(ready)||!Number.isFinite(Date.parse(ready))||ready<today())fail(400,'Choose a current date.');json({routes:matching.map(r=>({...r,options:quickOptions(r,rates,ready)}))});return true;}
+    if(matching.length!==1)fail(400,'Select one operating route for the Magic tool.');
+    json(magicCosts({...data.items,ready:search.ready},matching[0],rates));return true;
+  }
+  const cargo=validateCargo(canonicalCargo(data.search||{},routes));
   if (route==='/api/public/estimate') {
     const rates=(await store.query('SELECT * FROM freight_rates WHERE origin_key=$1 AND destination_key=$2 AND published=1 AND valid_to >= $3',[routeKey(cargo.origin),routeKey(cargo.destination),today()])).rows.map(unpack);
-    const offers=rates.map(r=>estimate(r,cargo,data.details||{})).filter(Boolean);
+    const offers=rates.filter(r=>enabledRate(r,routes)).map(r=>estimate(r,cargo,data.details||{})).filter(Boolean);
     return json({offers,calculatedAt:new Date().toISOString()}),true;
   }
   const details=validateContact(data.details||{});
@@ -47,6 +59,7 @@ export async function publicCommerce({req,url,store,origin,publicOrigin,body,jso
     if(data.rateId){
       const row=(await db.query('SELECT * FROM freight_rates WHERE id=$1',[String(data.rateId)])).rows[0];
       if(!row || row.version!==Number(data.rateVersion))fail(409,'The tariff changed. Search again and review the latest estimate before booking.');
+      if(!enabledRate(unpack(row),await readRoutes(db)))fail(409,'This route or service is no longer active. Search again.');
       offer=estimate(unpack(row),cargo,details);
       if(!offer)fail(409,'This tariff is no longer available for the selected route/date. Search again.');
     }
@@ -61,6 +74,15 @@ export async function publicCommerce({req,url,store,origin,publicOrigin,body,jso
   });json(result,201);return true;
 }
 export async function staffCommerce({route,method,data,url,user,store,freshUser,json,audit}) {
+  if(await workbookApi({route,method,data,url,user,store,freshUser,json,audit}))return true;
+  if(route.startsWith('/api/routes')){
+    if(user.role!=='super_admin')fail(403,'Only Super Admin can manage routes.');
+    if(route==='/api/routes'&&method==='GET'){json({routes:await readRoutes(store)});return true;}
+    const match=route.match(/^\/api\/routes\/([\w-]+)$/);
+    if((route==='/api/routes'&&method==='POST')||(match&&method==='PATCH')){
+      const normalized=validateRoute(data),result=await store.tx(async db=>{if((await freshUser(db,user)).role!=='super_admin')fail(403,'Access denied.');const old=match?(await db.query('SELECT * FROM freight_routes WHERE id=$1',[match[1]])).rows[0]:null;if(match&&!old)fail(404,'Route not found.');if(old&&old.version!==Number(data.version))fail(409,'Route changed. Reopen it.');const id=old?.id||randomUUID(),all=await readRoutes(db);if(all.some(r=>r.id!==id&&routeKey(r.origin)===routeKey(normalized.origin)&&routeKey(r.destination)===routeKey(normalized.destination)))fail(409,'This port pair already has a route. Edit that route.');if(old){const oldData=JSON.parse(old.data);if(oldData.origin!==normalized.origin||oldData.destination!==normalized.destination){const linked=(await db.query('SELECT * FROM freight_rates')).rows.map(unpack).some(r=>r.routeId===id);if(linked)fail(409,'This route has tariffs. Keep its port names and edit city aliases, or create a new route.');}await db.query('UPDATE freight_routes SET data=$1,active=$2,version=version+1,updated_at=$3 WHERE id=$4',[JSON.stringify(normalized),normalized.active?1:0,Date.now(),id]);}else await db.query('INSERT INTO freight_routes (id,version,active,data,updated_at) VALUES ($1,1,$2,$3,$4)',[id,normalized.active?1:0,JSON.stringify(normalized),Date.now()]);await audit(db,user.id,'route.saved',id,normalized.origin+' → '+normalized.destination);return {id};});json(result);return true;
+    }fail(404,'Not found.');
+  }
   if(!route.startsWith('/api/rates') && !route.startsWith('/api/website-bookings'))return false;
   const access=commerceAccess(user),rateMatch=route.match(/^\/api\/rates\/([\w-]+)$/),bookingMatch=route.match(/^\/api\/website-bookings\/([\w-]+)$/);
   if(route==='/api/rates' && method==='GET'){
@@ -68,21 +90,9 @@ export async function staffCommerce({route,method,data,url,user,store,freshUser,
     json({rates:(await store.query('SELECT * FROM freight_rates ORDER BY updated_at DESC LIMIT 1000')).rows.map(unpack),products,currencies});return true;
   }
   if((route==='/api/rates' && method==='POST') || (rateMatch && method==='PATCH')){
-    const rate=validateRate(data);
     const result=await store.tx(async db=>{
       if(!commerceAccess(await freshUser(db,user)).canManageRates)fail(403,'Only Super Admin can manage rates at this stage.');
-      const old=rateMatch?(await db.query('SELECT * FROM freight_rates WHERE id=$1',[rateMatch[1]])).rows[0]:null;
-      if(rateMatch&&!old)fail(404,'Rate not found.');
-      if(old && old.version!==Number(data.version))fail(409,'This rate changed. Reopen it before saving.');
-      const id=old?.id||randomUUID();
-      if(rate.published){
-        const overlaps=(await db.query('SELECT id FROM freight_rates WHERE origin_key=$1 AND destination_key=$2 AND product=$3 AND published=1 AND valid_from<=$4 AND valid_to>=$5 AND id<>$6',[routeKey(rate.origin),routeKey(rate.destination),rate.product,rate.validTo,rate.validFrom,id])).rows;
-        if(overlaps.length)fail(409,'Another published rate covers these dates for this route/product. Adjust dates or unpublish the older rate.');
-      }
-      if(old)await db.query('UPDATE freight_rates SET version=version+1,origin_key=$1,destination_key=$2,product=$3,valid_from=$4,valid_to=$5,published=$6,data=$7,updated_by=$8,updated_at=$9 WHERE id=$10',[routeKey(rate.origin),routeKey(rate.destination),rate.product,rate.validFrom,rate.validTo,rate.published?1:0,JSON.stringify(rate),user.id,Date.now(),id]);
-      else await db.query('INSERT INTO freight_rates (id,version,origin_key,destination_key,product,valid_from,valid_to,published,data,updated_by,updated_at) VALUES ($1,1,$2,$3,$4,$5,$6,$7,$8,$9,$10)',[id,routeKey(rate.origin),routeKey(rate.destination),rate.product,rate.validFrom,rate.validTo,rate.published?1:0,JSON.stringify(rate),user.id,Date.now()]);
-      await audit(db,user.id,rate.published?'rate.published':'rate.saved',id,`${rate.origin} → ${rate.destination}; ${rate.product}`);
-      return {id,version:old?old.version+1:1};
+      return saveRate(db,data,user,audit,{id:rateMatch?.[1]||null});
     });json(result,oldStatus(rateMatch));return true;
   }
   if(route==='/api/website-bookings' && method==='GET'){
