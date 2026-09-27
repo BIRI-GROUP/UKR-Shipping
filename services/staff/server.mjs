@@ -6,6 +6,7 @@ import { fileURLToPath } from 'node:url';
 import { resolve } from 'node:path';
 import { roles, modules, can, accessDescription } from './policy.mjs';
 import { postgresStore } from './store.mjs';
+import { publicCommerce, staffCommerce, commerceAccess } from './commerce.mjs';
 const scrypt = promisify(scryptCallback);
 const scryptOptions = { N: 32768, r: 8, p: 3, maxmem: 64 * 1024 * 1024 };
 const digest = value => createHash('sha256').update(value).digest('hex');
@@ -52,9 +53,11 @@ const files = {
   '/': ['../../apps/staff/index.html', 'text/html; charset=utf-8'],
   '/staff.js': ['../../apps/staff/staff.js', 'text/javascript; charset=utf-8'],
   '/staff.css': ['../../apps/staff/staff.css', 'text/css; charset=utf-8'],
+  '/commerce.js': ['../../apps/staff/commerce.js', 'text/javascript; charset=utf-8'],
+  '/commerce.css': ['../../apps/staff/commerce.css', 'text/css; charset=utf-8'],
   '/logo.svg': ['../../site/assets/ukr-shipping-blue.svg', 'image/svg+xml']
 };
-export async function createHandler({ store, origin, ownerEmail = '', setupTokenHash = '', setupExpires = 0, secure = true }) {
+export async function createHandler({ store, origin, publicOrigin = 'https://ukr-shipping-preview.onrender.com', ownerEmail = '', setupTokenHash = '', setupExpires = 0, secure = true }) {
   if (!secure && process.env.NODE_ENV !== 'test') throw new Error('Insecure cookies permitted only in local tests');
   const cookieName = secure ? '__Host-ukr_staff' : 'ukr_staff_test';
   const cookie = (value, age) => `${cookieName}=${value}; Path=/; HttpOnly; SameSite=Strict; Max-Age=${age}${secure ? '; Secure' : ''}`;
@@ -83,6 +86,14 @@ export async function createHandler({ store, origin, ownerEmail = '', setupToken
     const json = (value, status = 200) => { res.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8' }); res.end(JSON.stringify(value)); };
     try {
       const url = new URL(req.url, origin); const route = url.pathname; const method = req.method;
+      if (route.startsWith('/api/public/')) {
+        if ([origin,publicOrigin].includes(req.headers.origin)) { res.setHeader('Access-Control-Allow-Origin',req.headers.origin); res.setHeader('Vary','Origin'); }
+        if (method==='OPTIONS') {
+          if (![origin,publicOrigin].includes(req.headers.origin)) fail(403,'Untrusted request origin.');
+          res.setHeader('Access-Control-Allow-Methods','GET, POST, OPTIONS');res.setHeader('Access-Control-Allow-Headers','Content-Type');res.writeHead(204);return res.end();
+        }
+        if (await publicCommerce({req,url,store,origin,publicOrigin,body,json,consumeLimit,audit})) return;
+      }
       if (route === '/healthz' && method === 'GET') return json({ status: store ? 'ready' : 'database_required' });
       if (route === '/robots.txt') { res.writeHead(200, { 'Content-Type': 'text/plain' }); return res.end('User-agent: *\nDisallow: /\n'); }
       if (files[route] && method === 'GET') { const [file, type] = files[route]; res.writeHead(200, { 'Content-Type': type }); return res.end(await readFile(new URL(file, import.meta.url))); }
@@ -151,7 +162,8 @@ export async function createHandler({ store, origin, ownerEmail = '', setupToken
         }); return json({ message: 'Password reset. All previous sessions ended. Sign in with your new password.' });
       }
       const user = await session(req, mutation);
-      if (route === '/api/me' && method === 'GET') return json({ user: publicUser(user), csrf: user.csrf, modules: accessDescription(user.role), canManageUsers: can(user, 'users'), canReadAudit: can(user, 'audit') });
+      if (route === '/api/me' && method === 'GET') return json({ user: publicUser(user), csrf: user.csrf, modules: accessDescription(user.role), canManageUsers: can(user, 'users'), canReadAudit: can(user, 'audit'), ...commerceAccess(user) });
+      if (await staffCommerce({route,method,data,url,user,store,freshUser,json,audit})) return;
       if (route === '/api/logout' && method === 'POST') {
         await store.tx(async db => { await db.query('DELETE FROM staff_sessions WHERE token_hash=$1', [user.token_hash]); await audit(db, user.id, 'session.logout', user.id); });
         res.setHeader('Set-Cookie', cookie('', 0)); return json({ ok: true });

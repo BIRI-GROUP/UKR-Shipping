@@ -55,6 +55,8 @@ async function enterWorkspace() {
   const nav = $('staffNav'); nav.replaceChildren();
   const add = (label, key, action) => { const b = button(label, async () => { $('appError').textContent = ''; $('appSuccess').textContent = ''; nav.querySelectorAll('button').forEach(x => x.classList.remove('active')); b.classList.add('active'); await action(); }, ''); b.dataset.page = key; nav.append(b); };
   add('Overview', 'overview', dashboard);
+  if (me.canManageRates) add('Weekly rates', 'rates', ratesPage);
+  if (me.canReadBookings) add('Website bookings', 'website-bookings', bookingsPage);
   for (const module of me.modules) add(module.label, module.key, () => queue(module.key));
   if (me.canManageUsers) add('Staff & invitations', 'users', usersPage);
   if (me.canReadAudit) add('Audit trail', 'audit', auditPage);
@@ -74,6 +76,8 @@ async function dashboard() {
   welcome.append(element('p', me.user.roleName, 'pill')); content.append(welcome);
   const next = panel('Start with your department', 'Choose a queue to review your work and follow up on outstanding tasks.');
   me.modules.forEach(m => next.append(button(m.label, () => queue(m.key)))); content.append(next);
+  if (me.canManageRates) next.prepend(button('Manage weekly rates', ratesPage, 'primary'));
+  if (me.canReadBookings) next.prepend(button('Website bookings', bookingsPage, 'primary'));
 }
 async function queue(key) {
   activeModule = key; const grant = me.modules.find(m => m.key === key); if (!grant) return;

@@ -8,7 +8,7 @@
 <meta name="description" content="Compare sea, air and road freight with UKR Shipping.">
 <link rel="preconnect" href="https://images.unsplash.com">
 <link rel="stylesheet" href="styles.css?v=blue-20260927">
-<link rel="stylesheet" href="quote-flow.css?v=1">
+<link rel="stylesheet" href="quote-flow.css?v=weekly-rates-1">
 </head>
 <body>
 <header class="header">
@@ -19,7 +19,7 @@
   <div class="header-actions"><button class="link-btn" onclick="showPortal()">Customer Preview</button><button class="gold-btn" onclick="scrollBook()">Get a Quote</button></div>
 </header>
 <nav class="mobile-nav" aria-label="Mobile navigation"><a href="#book">Quote</a><a href="#services">Services</a><a href="#track">Track</a><a href="#draftsSection">My drafts</a><a href="https://ukr-staff-staging.onrender.com/">Staff login</a></nav>
-<p class="staging-notice">Staging preview · Explore services and prepare a request. No request is sent and no booking is confirmed.</p>
+<p class="staging-notice">UKR staging · Published weekly rates power estimates. Submitted booking requests reach the UKR team. No online payment.</p>
 
 <main id="home">
 <section class="hero">
@@ -41,9 +41,9 @@
       </div>
 
       <div class="route-row">
-        <div class="field"><label for="origin">From</label><input id="origin" maxlength="120" list="places" value="Guangzhou, China"><small>City, port or airport</small></div>
+        <div class="field"><label for="origin">From</label><input id="origin" maxlength="120" list="places" value="Ningbo, China"><small>City, port or airport</small></div>
         <button class="swap" onclick="swapRoute()" aria-label="Swap origin and destination">⇄</button>
-        <div class="field"><label for="destination">To</label><input id="destination" maxlength="120" list="places" value="Dubai, UAE"><small>City, port or airport</small></div>
+        <div class="field"><label for="destination">To</label><input id="destination" maxlength="120" list="places" value="Jebel Ali, UAE"><small>City, port or airport</small></div>
       </div>
       <datalist id="places">
         <option>Guangzhou, China</option><option>Shenzhen, China</option><option>Shanghai, China</option><option>Ningbo, China</option>
@@ -68,13 +68,13 @@
 <div class="field"><label for="containers">Containers</label><input id="containers" type="number" min="1" max="100" step="1" value="1"></div></div>
 <p id="modeNotice" class="mode-notice" role="status"></p>
 <div class="quick-row">
-        <label class="check"><input id="ddp" type="checkbox" checked> Door delivery requested</label>
+        <label class="check"><input id="ddp" type="checkbox"> Door delivery requested</label>
         <label class="check"><input id="flex" type="checkbox"> Flexible date for Smart Shipping</label>
       </div>
 
       <p id="searchError" class="inline-error" role="alert"></p>
       <button class="search-btn" onclick="searchOptions()">Find shipping options <span>→</span></button>
-      <p class="form-note">No live tariffs connected. Price, route availability and transit time require UKR confirmation.</p>
+      <p class="form-note">Prices use published rates for your route and ready date. LCL, air and truck estimates compare weight and volume using each tariff’s rules.</p>
     </div>
   </div>
 </section>
@@ -91,13 +91,13 @@
     <div><span class="kicker dark-kicker">YOUR OPTIONS</span><h2>Choose how you want to ship</h2><p id="searchSummary"></p></div>
     <button class="secondary-btn" onclick="editSearch()">Edit search</button>
   </div>
-  <p class="results-notice">Quotation required · These services are not confirmed offers. Air and sea are alternatives for the same cargo.</p>
+  <p class="results-notice">Compare estimates, inclusions and booking conditions. Air and sea are alternatives for the same cargo. No published rate? Send a quotation request.</p>
   <div class="results-layout">
     <aside class="filter-card">
 <h3>Your preferences</h3>
 <div><label for="resultPriority">Priority</label><select id="resultPriority" onchange="renderOptions()"><option value="balance">Recommended order</option><option value="speed">Speed priority</option><option value="flex">Flexible consolidation first</option></select></div>
 <div><label for="resultScope">Delivery scope</label><select id="resultScope" onchange="updateScope()"><option value="door">Door delivery requested</option><option value="terminal">Port / airport / terminal</option></select></div>
-<p class="details-note">Service types are suggestions. UKR must confirm routing, capacity and charges.</p>
+<p class="details-note">Every price states its scope and valid dates. A port or airport rate does not include door delivery unless stated.</p>
 </aside>
     <div id="optionCards" class="option-cards"></div>
   </div>
@@ -127,26 +127,29 @@
           <div class="field"><label for="deliveryAddress">Delivery location (optional)</label><textarea id="deliveryAddress" maxlength="500"></textarea></div>
           <div class="field wide"><label for="cargoNotes">Other requirements (optional)</label><textarea id="cargoNotes" maxlength="1500" placeholder="Clearance, insurance, warehouse handling or delivery requirements"></textarea></div>
         </div></fieldset>
-        <fieldset><legend>Your contact details</legend><p class="details-note">Use sample contact details when testing this preview.</p><div class="form-grid">
+        <fieldset><legend>Your contact details</legend><p class="details-note">These details will be sent to UKR only when you submit the booking request.</p><div class="form-grid">
           <div class="field"><label for="contactName">Full name</label><input id="contactName" required maxlength="100" autocomplete="name"></div>
           <div class="field"><label for="company">Company (optional)</label><input id="company" maxlength="150" autocomplete="organization"></div>
           <div class="field"><label for="contactEmail">Email</label><input id="contactEmail" type="email" required maxlength="254" autocomplete="email"></div>
           <div class="field"><label for="contactPhone">Phone / WhatsApp (optional)</label><input id="contactPhone" type="tel" maxlength="40" autocomplete="tel"></div>
         </div></fieldset>
+        <label class="check"><input id="bookingConsent" type="checkbox"> I agree to send my cargo and contact details to UKR for this request.</label>
+        <div class="honeypot" aria-hidden="true"><label for="websiteContact">Leave blank</label><input id="websiteContact" tabindex="-1" autocomplete="off"></div>
         <p id="detailsError" class="inline-error" role="alert"></p>
         <div class="flow-actions"><button class="secondary-btn" type="button" onclick="backToOptions()">Back to services</button><button class="gold-btn" type="submit">Review request →</button></div>
       </form>
       <div id="quoteReview" class="hidden">
         <img class="print-header" src="assets/ukr-shipping-blue.svg" alt="UKR Shipping">
-        <h3>Quotation request draft</h3><p class="details-note">Preview only — not sent to UKR. This is not a quotation or confirmed booking.</p>
+        <h3>Review & book</h3><p class="details-note">Check the estimate and service conditions below. Your request reaches UKR when you press Submit booking request.</p>
         <div id="reviewContent"></div>
         <div id="savedNotice" class="draft-notice hidden" role="status"></div>
-        <p class="draft-notice">Save a copy in this browser to continue testing later, or print this request. Saved drafts are visible to anyone using this browser.</p>
+        <p class="draft-notice">You can also save a local draft or print this estimate. A local draft is not sent; saved drafts are visible to anyone using this browser.</p>
+        <div id="bookingReceipt" class="booking-receipt hidden" role="status"></div>
         <p id="draftError" class="inline-error" role="alert"></p>
-        <div class="flow-actions"><button class="secondary-btn" onclick="editDetails()">Edit details</button><button class="secondary-btn" onclick="window.print()">Print / save PDF</button><button class="gold-btn" onclick="saveDraft()">Save draft in this browser</button></div>
+        <div class="flow-actions"><button class="secondary-btn" onclick="editDetails()">Edit details</button><button class="secondary-btn" onclick="window.print()">Print / save PDF</button><button class="secondary-btn" onclick="saveDraft()">Save draft in this browser</button><button id="submitBooking" class="gold-btn" onclick="submitBooking()">Submit booking request</button></div>
       </div>
     </div>
-    <aside class="quote-summary"><img src="assets/ukr-shipping-blue.svg" alt="UKR Shipping"><h3 id="selectedService"></h3><p id="selectedRoute"></p><p id="selectedCargo"></p><p id="selectedReady"></p><div class="summary-price"><strong>Quotation required</strong><span>UKR will need to confirm availability, scope, charges and timing.</span></div></aside>
+    <aside class="quote-summary"><img src="assets/ukr-shipping-blue.svg" alt="UKR Shipping"><h3 id="selectedService"></h3><p id="selectedRoute"></p><p id="selectedCargo"></p><p id="selectedReady"></p><div id="selectedPrice" class="summary-price"><strong>Quotation required</strong><span>UKR will confirm scope and charges.</span></div></aside>
   </div>
 </section>
 <section id="draftsSection" class="flow-section">
@@ -197,7 +200,7 @@
 </section>
 
 </main>
-<footer><div class="brand"><img class="brand-logo" src="assets/ukr-shipping-blue.svg" width="2172" height="724" alt="UKR Shipping"></div><p>Trade & Logistics Platform • UAE</p><p class="footer-note">Temporary staging preview • No live booking or payment</p></footer>
+<footer><div class="brand"><img class="brand-logo" src="assets/ukr-shipping-blue.svg" width="2172" height="724" alt="UKR Shipping"></div><p>Trade & Logistics Platform • UAE</p><p class="footer-note">Staging • Connected rates and booking requests • No online payment</p></footer>
 <script src="freight-rules.js?v=1"></script>
-<script src="quote-flow.js?v=1"></script>
+<script src="quote-flow.js?v=weekly-rates-1"></script>
 </body></html>
