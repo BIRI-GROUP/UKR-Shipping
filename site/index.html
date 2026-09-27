@@ -8,6 +8,7 @@
 <meta name="description" content="Compare sea, air and road freight with UKR Shipping.">
 <link rel="preconnect" href="https://images.unsplash.com">
 <link rel="stylesheet" href="styles.css?v=blue-20260927">
+<link rel="stylesheet" href="quote-flow.css?v=1">
 </head>
 <body>
 <header class="header">
@@ -15,8 +16,10 @@
   <nav>
     <a href="#book">Book</a><a href="#services">Services</a><a href="#track">Track</a><a href="#tools">Tools</a>
   </nav>
-  <div class="header-actions"><button class="link-btn" onclick="showPortal()">Customer Login</button><button class="gold-btn" onclick="scrollBook()">Get a Quote</button></div>
+  <div class="header-actions"><button class="link-btn" onclick="showPortal()">Customer Preview</button><button class="gold-btn" onclick="scrollBook()">Get a Quote</button></div>
 </header>
+<nav class="mobile-nav" aria-label="Mobile navigation"><a href="#book">Quote</a><a href="#services">Services</a><a href="#track">Track</a><a href="#draftsSection">My drafts</a></nav>
+<p class="staging-notice">Staging preview · Explore services and prepare a request. No request is sent and no booking is confirmed.</p>
 
 <main id="home">
 <section class="hero">
@@ -25,22 +28,22 @@
     <div class="hero-copy">
       <span class="kicker">UAE • CHINA • GCC • WORLDWIDE</span>
       <h1>Shipping, made as easy as booking a flight.</h1>
-      <p>Compare air, sea and road options. Book cargo, follow every milestone, download documents and manage your shipment in one place.</p>
+      <p>Compare freight services, tell us about your cargo and prepare your quotation request. Built around the way you ship.</p>
       <div class="hero-points"><span>China → UAE LCL DDP</span><span>Air Cargo</span><span>FCL</span><span>GCC Road</span></div>
     </div>
 
     <div class="booking-card" id="book">
-      <div class="mode-tabs" role="tablist">
-        <button class="mode active" data-mode="compare" onclick="chooseMode(this)">Compare Air & Sea</button>
-        <button class="mode" data-mode="sea" onclick="chooseMode(this)">Sea</button>
-        <button class="mode" data-mode="air" onclick="chooseMode(this)">Air</button>
-        <button class="mode" data-mode="road" onclick="chooseMode(this)">Road</button>
+      <div class="mode-tabs" role="group" aria-label="Freight mode">
+        <button class="mode active" aria-pressed="true" data-mode="compare" onclick="chooseMode(this)">Compare Air & Sea</button>
+        <button class="mode" aria-pressed="false" data-mode="sea" onclick="chooseMode(this)">Sea</button>
+        <button class="mode" aria-pressed="false" data-mode="air" onclick="chooseMode(this)">Air</button>
+        <button class="mode" aria-pressed="false" data-mode="road" onclick="chooseMode(this)">Road</button>
       </div>
 
       <div class="route-row">
-        <div class="field"><label>From</label><input id="origin" list="places" value="Guangzhou, China"><small>City, port or airport</small></div>
+        <div class="field"><label for="origin">From</label><input id="origin" maxlength="120" list="places" value="Guangzhou, China"><small>City, port or airport</small></div>
         <button class="swap" onclick="swapRoute()" aria-label="Swap origin and destination">⇄</button>
-        <div class="field"><label>To</label><input id="destination" list="places" value="Dubai, UAE"><small>City, port or airport</small></div>
+        <div class="field"><label for="destination">To</label><input id="destination" maxlength="120" list="places" value="Dubai, UAE"><small>City, port or airport</small></div>
       </div>
       <datalist id="places">
         <option>Guangzhou, China</option><option>Shenzhen, China</option><option>Shanghai, China</option><option>Ningbo, China</option>
@@ -50,23 +53,28 @@
       </datalist>
 
       <div class="booking-grid">
-        <div class="field"><label>Cargo ready</label><input id="ready" type="date"></div>
-        <div class="field"><label>Cargo type</label>
+        <div class="field"><label for="ready">Cargo ready</label><input id="ready" type="date"></div>
+        <div class="field"><label for="cargoType">Cargo type</label>
           <select id="cargoType" onchange="cargoChanged()">
             <option value="cartons">Cartons / boxes</option><option value="pallets">Pallets</option><option value="container">Full container</option><option value="other">Other commercial cargo</option>
           </select>
         </div>
-        <div class="field"><label>Weight</label><div class="with-unit"><input id="weight" type="number" min="1" value="1000"><span>kg</span></div></div>
-        <div class="field"><label>Volume</label><div class="with-unit"><input id="cbm" type="number" min=".01" step=".01" value="5"><span>CBM</span></div></div>
+        <div class="field"><label for="weight">Weight</label><div class="with-unit"><input id="weight" type="number" min="1" value="1000"><span>kg</span></div></div>
+        <div class="field"><label for="cbm">Volume</label><div class="with-unit"><input id="cbm" type="number" min=".01" step=".01" value="5"><span>CBM</span></div></div>
       </div>
 
-      <div class="quick-row">
-        <label class="check"><input id="ddp" type="checkbox" checked> Door delivery / DDP if available</label>
+      <div id="containerFields" class="booking-grid hidden">
+<div class="field"><label for="containerSize">Equipment</label><select id="containerSize"><option value="20GP">20′ standard</option><option value="40GP">40′ standard</option><option value="40HC">40′ high cube</option></select></div>
+<div class="field"><label for="containers">Containers</label><input id="containers" type="number" min="1" max="100" step="1" value="1"></div></div>
+<p id="modeNotice" class="mode-notice" role="status"></p>
+<div class="quick-row">
+        <label class="check"><input id="ddp" type="checkbox" checked> Door delivery requested</label>
         <label class="check"><input id="flex" type="checkbox"> Flexible date for Smart Shipping</label>
       </div>
 
+      <p id="searchError" class="inline-error" role="alert"></p>
       <button class="search-btn" onclick="searchOptions()">Find shipping options <span>→</span></button>
-      <p class="form-note">Live prices appear only where UKR has a valid rate. Other services are confirmed by operations.</p>
+      <p class="form-note">No live tariffs connected. Price, route availability and transit time require UKR confirmation.</p>
     </div>
   </div>
 </section>
@@ -83,31 +91,80 @@
     <div><span class="kicker dark-kicker">YOUR OPTIONS</span><h2>Choose how you want to ship</h2><p id="searchSummary"></p></div>
     <button class="secondary-btn" onclick="editSearch()">Edit search</button>
   </div>
+  <p class="results-notice">Quotation required · These services are not confirmed offers. Air and sea are alternatives for the same cargo.</p>
   <div class="results-layout">
     <aside class="filter-card">
-      <h3>What matters most?</h3>
-      <label class="radio"><input name="priority" type="radio" checked> Best balance</label>
-      <label class="radio"><input name="priority" type="radio"> Lowest cost</label>
-      <label class="radio"><input name="priority" type="radio"> Fastest</label>
-      <hr>
-      <h4>Delivery scope</h4>
-      <label class="check"><input type="checkbox" checked> Door delivery</label>
-      <label class="check"><input type="checkbox"> Port / airport only</label>
-    </aside>
+<h3>Your preferences</h3>
+<div><label for="resultPriority">Priority</label><select id="resultPriority" onchange="renderOptions()"><option value="balance">Recommended order</option><option value="speed">Speed priority</option><option value="flex">Flexible consolidation first</option></select></div>
+<div><label for="resultScope">Delivery scope</label><select id="resultScope" onchange="updateScope()"><option value="door">Door delivery requested</option><option value="terminal">Port / airport / terminal</option></select></div>
+<p class="details-note">Service types are suggestions. UKR must confirm routing, capacity and charges.</p>
+</aside>
     <div id="optionCards" class="option-cards"></div>
   </div>
 </section>
 
+
+<section id="quoteFlow" class="flow-section hidden" aria-labelledby="flowHeading">
+  <div class="section-head"><div><span class="kicker dark-kicker">YOUR QUOTATION REQUEST</span><h2 id="flowHeading" tabindex="-1">Tell us about your cargo</h2></div><button class="secondary-btn" onclick="backToOptions()">Change service</button></div>
+  <ol class="flow-steps" aria-label="Request progress"><li>1. Route & service</li><li id="detailsStep" aria-current="step">2. Cargo & contact</li><li id="reviewStep">3. Review request</li></ol>
+  <div class="flow-layout">
+    <div class="flow-panel">
+      <form id="quoteDetails" novalidate>
+        <fieldset><legend>Cargo details</legend><div class="form-grid">
+          <div class="field wide"><label for="commodity">What are you shipping?</label><input id="commodity" required maxlength="250" placeholder="e.g. Cotton clothing in cartons"></div>
+          <div class="field"><label for="packages">Number of packages</label><input id="packages" type="number" min="1" max="1000000" step="1" required value="1"></div>
+          <div class="field"><label for="declaredValue">Cargo value (AED, optional)</label><input id="declaredValue" type="number" min="0" max="1000000000" step=".01"></div>
+          <div class="field wide"><label for="dimensions">Package dimensions (optional)</label><input id="dimensions" maxlength="250" placeholder="e.g. 10 cartons, each 60 × 40 × 40 cm"><small>Actual measurements may change chargeable weight.</small></div>
+        </div></fieldset>
+        <fieldset><legend>Handling requirements</legend><div class="cargo-flags">
+          <label class="check"><input id="stackable" type="checkbox" checked> Cargo can be stacked</label>
+          <label class="check"><input id="batteries" type="checkbox"> Contains batteries</label>
+          <label class="check"><input id="dangerous" type="checkbox"> Dangerous goods or restricted cargo</label>
+          <label class="check"><input id="oversized" type="checkbox"> Heavy or oversized cargo</label>
+        </div><p class="details-note">Special cargo needs operations review before any price or booking is confirmed.</p></fieldset>
+        <fieldset><legend>Pickup & delivery</legend><div class="form-grid">
+          <div class="field"><label for="pickupAddress">Pickup location / supplier (optional)</label><textarea id="pickupAddress" maxlength="500"></textarea></div>
+          <div class="field"><label for="deliveryAddress">Delivery location (optional)</label><textarea id="deliveryAddress" maxlength="500"></textarea></div>
+          <div class="field wide"><label for="cargoNotes">Other requirements (optional)</label><textarea id="cargoNotes" maxlength="1500" placeholder="Clearance, insurance, warehouse handling or delivery requirements"></textarea></div>
+        </div></fieldset>
+        <fieldset><legend>Your contact details</legend><p class="details-note">Use sample contact details when testing this preview.</p><div class="form-grid">
+          <div class="field"><label for="contactName">Full name</label><input id="contactName" required maxlength="100" autocomplete="name"></div>
+          <div class="field"><label for="company">Company (optional)</label><input id="company" maxlength="150" autocomplete="organization"></div>
+          <div class="field"><label for="contactEmail">Email</label><input id="contactEmail" type="email" required maxlength="254" autocomplete="email"></div>
+          <div class="field"><label for="contactPhone">Phone / WhatsApp (optional)</label><input id="contactPhone" type="tel" maxlength="40" autocomplete="tel"></div>
+        </div></fieldset>
+        <p id="detailsError" class="inline-error" role="alert"></p>
+        <div class="flow-actions"><button class="secondary-btn" type="button" onclick="backToOptions()">Back to services</button><button class="gold-btn" type="submit">Review request →</button></div>
+      </form>
+      <div id="quoteReview" class="hidden">
+        <img class="print-header" src="assets/ukr-shipping-blue.svg" alt="UKR Shipping">
+        <h3>Quotation request draft</h3><p class="details-note">Preview only — not sent to UKR. This is not a quotation or confirmed booking.</p>
+        <div id="reviewContent"></div>
+        <div id="savedNotice" class="draft-notice hidden" role="status"></div>
+        <p class="draft-notice">Save a copy in this browser to continue testing later, or print this request. Saved drafts are visible to anyone using this browser.</p>
+        <p id="draftError" class="inline-error" role="alert"></p>
+        <div class="flow-actions"><button class="secondary-btn" onclick="editDetails()">Edit details</button><button class="secondary-btn" onclick="window.print()">Print / save PDF</button><button class="gold-btn" onclick="saveDraft()">Save draft in this browser</button></div>
+      </div>
+    </div>
+    <aside class="quote-summary"><img src="assets/ukr-shipping-blue.svg" alt="UKR Shipping"><h3 id="selectedService"></h3><p id="selectedRoute"></p><p id="selectedCargo"></p><p id="selectedReady"></p><div class="summary-price"><strong>Quotation required</strong><span>UKR will need to confirm availability, scope, charges and timing.</span></div></aside>
+  </div>
+</section>
+<section id="draftsSection" class="flow-section">
+  <div class="section-head"><div><span class="kicker dark-kicker">CONTINUE YOUR PREVIEW</span><h2>My request drafts</h2><p>Stored only in this browser. Nothing has been sent to UKR.</p></div><button class="secondary-btn" onclick="newRequest()">New request</button></div>
+  <div id="draftList"></div><p id="draftListError" class="inline-error" role="alert"></p>
+</section>
+
 <section class="smart-section" id="tools">
-  <div class="smart-copy"><span class="kicker dark-kicker">SMART SHIPPING</span><h2>Know your landed cost before you sell.</h2><p>Estimate shipping per item and model your target selling price. Save the calculation and turn it into a quote request.</p></div>
+  <div class="smart-copy"><span class="kicker dark-kicker">SMART SHIPPING</span><h2>Know your landed cost before you sell.</h2><p>Estimate shipping per item and model your target selling price. Use your own logistics estimate to compare target margins. Duties, taxes and other costs are included only if you enter them.</p></div>
   <div class="calc-card">
     <div class="calc-grid">
-      <div class="field"><label>Product cost / unit</label><input id="productCost" type="number" value="40"></div>
-      <div class="field"><label>Quantity</label><input id="quantity" type="number" value="1000"></div>
-      <div class="field"><label>Shipping & logistics</label><input id="shippingCost" type="number" value="5000"></div>
-      <div class="field"><label>Target gross margin</label><div class="with-unit"><input id="targetMargin" type="number" value="30"><span>%</span></div></div>
+      <div class="field"><label for="productCost">Product cost / unit</label><input id="productCost" type="number" value="40"></div>
+      <div class="field"><label for="quantity">Quantity</label><input id="quantity" type="number" value="1000"></div>
+      <div class="field"><label for="shippingCost">Shipping & logistics</label><input id="shippingCost" type="number" value="5000"></div>
+      <div class="field"><label for="targetMargin">Target gross margin</label><div class="with-unit"><input id="targetMargin" type="number" value="30"><span>%</span></div></div>
     </div>
     <button class="gold-btn full" onclick="calculateMargin()">Calculate</button>
+    <p id="calcError" class="inline-error" role="alert"></p>
     <div class="calc-result" id="calcResult"><span>Estimated landed cost / unit</span><b>AED 45.00</b><span>Suggested selling price</span><strong>AED 64.29</strong></div>
   </div>
 </section>
@@ -118,13 +175,15 @@
     <article><div class="service-icon">▰</div><h3>Sea Freight</h3><p>LCL, LCL DDP, FCL, consolidation and worldwide import/export.</p><button onclick="prefill('sea')">Search sea freight</button></article>
     <article><div class="service-icon">✈</div><h3>Air Cargo</h3><p>China → UAE bulk and DDP, UAE export and worldwide air solutions.</p><button onclick="prefill('air')">Search air cargo</button></article>
     <article><div class="service-icon">▤</div><h3>Road & Fleet</h3><p>UAE pickup, GCC FTL, Turkey/Syria corridors, port and airport transfers.</p><button onclick="prefill('road')">Search road freight</button></article>
-    <article><div class="service-icon">⌂</div><h3>China Operations</h3><p>Supplier pickup, courier, warehouse, export customs and consolidation.</p><button onclick="alert('China operations detail page is next in the build.')">Explore China services</button></article>
+    <article><div class="service-icon">⌂</div><h3>China Operations</h3><p>Supplier pickup, courier, warehouse, export customs and consolidation.</p><button onclick="openServiceInquiry('china')">Explore China services</button></article>
+    <article><div class="service-icon">✓</div><h3>Customs Clearance</h3><p>Prepare an inquiry for import, export or transit clearance, with document review by UKR.</p><button onclick="openServiceInquiry('customs')">Prepare clearance inquiry</button></article>
   </div>
 </section>
 
 <section class="tracking-section" id="track">
-  <div><span class="kicker">TRACK</span><h2>Your shipment without the chasing.</h2><p>Enter your UKR Shipment ID to open the customer tracking view.</p></div>
-  <div class="track-box"><input id="trackId" placeholder="e.g. UKR-260184"><button class="gold-btn" onclick="trackShipment()">Track shipment</button></div>
+  <div><span class="kicker">TRACK</span><h2>Your shipment without the chasing.</h2><p>Try sample shipment UKR-260184. Live shipment tracking will connect to the operations platform.</p></div>
+  <div class="track-box"><input id="trackId" aria-label="Shipment reference" placeholder="e.g. UKR-260184"><button class="gold-btn" onclick="trackShipment()">Track shipment</button></div>
+  <p id="trackError" class="inline-error" role="alert"></p>
 </section>
 
 <section class="portal-preview hidden" id="portalPreview">
@@ -139,5 +198,6 @@
 
 </main>
 <footer><div class="brand"><img class="brand-logo" src="assets/ukr-shipping-blue.svg" width="2172" height="724" alt="UKR Shipping"></div><p>Trade & Logistics Platform • UAE</p><p class="footer-note">Temporary staging preview • No live booking or payment</p></footer>
-<script src="app.js"></script>
+<script src="freight-rules.js?v=1"></script>
+<script src="quote-flow.js?v=1"></script>
 </body></html>
