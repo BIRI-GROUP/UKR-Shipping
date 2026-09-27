@@ -64,7 +64,7 @@ Passwords use scrypt (N=32768, r=8, p=3, 16-byte random salt, 64-byte output). O
 
 Missing `DATABASE_URL` leaves the public login page available but disables login/account creation; API writes return 503. There is no production SQLite/in-memory fallback. Tests use only disposable in-memory SQLite with `NODE_ENV=test`; this verifies application behavior but is not PostgreSQL integration verification.
 
-The workspace's one free Postgres slot is occupied by the unrelated BIRI database. Do not reuse, delete or modify it. A dedicated paid UKR database needs approval, or the owner can supply an existing dedicated UKR connection. Render free web services can sleep when idle and are for staging. MFA, backup-restore drills, durable external audit export, email delivery and real PostgreSQL persistence/redeploy verification are launch follow-ups.
+The dedicated UKR database `dpg-dasl0n7pn0mc738sle8g-a` was provisioned on 27 September 2026 after explicit approval: PostgreSQL 18, Frankfurt, 0.1c-256mb, 1 GB storage, storage autoscaling disabled. Approximate approved charge: US$6.30/month before tax. Its external IP allowlist is empty; the staff app uses the internal connection URL. The unrelated BIRI database was not modified. Render free web services can sleep when idle and are for staging. MFA, backup-restore drills, durable external audit export, email delivery and authenticated persistence/redeploy verification are launch follow-ups.
 
 ## Verification
 
