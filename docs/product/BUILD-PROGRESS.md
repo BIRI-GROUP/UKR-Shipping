@@ -12,12 +12,14 @@ Source of scope: PROJECT-DIRECTORY.md, SERVICE-CATALOG.md, SMARTLOAD.md and the 
 - Print-ready request review, marked as a draft rather than a formal quote.
 - China operations and customs inquiry entry points.
 - Calculator validation and two-decimal results. Sample tracking only accepts its actual sample reference.
+- Separate staff workspace at https://ukr-staff-staging.onrender.com/ with password/session authentication, 13 server-enforced staff roles, departmental work queues, invitations, password recovery, account deactivation and audit history. Linked from desktop/mobile public navigation. See STAFF-PLATFORM.md for scope and access matrix.
+- Staff application tested locally with disposable test accounts. Live account activation is pending the dedicated UKR database: owner approved approximately US$6.30/month, but Render returned HTTP 402 requiring a payment method. No UKR database or owner account has been created.
 
 ## Next backend foundation, in master-plan order
 
 1. Configurable service catalog and route availability matrix, including ONLINE RATE, STAFF-CONFIRM, REQUEST ONLY, TEMPORARILY SUSPENDED and UNAVAILABLE.
 2. PostgreSQL model and migrations: customers, contacts, leads, quotes/versions, cargo and events. Server-generated immutable shipment identity when booking creates a shipment.
-3. Authentication and server-side permissions: customer access scoped to their company; staff roles and audit events. Internal costs and notes excluded from customer responses.
+3. Activate and verify staff persistence in PostgreSQL after Render billing setup. Staff roles and audit events are implemented; customer authentication and company scoping remain to build. Internal costs and notes must remain excluded from customer responses.
 4. Lead submission API, staff review queue and CRM. Replace local draft save with a clearly acknowledged server submission while retaining draft editing.
 5. Verified rates, validity windows, charge breakdowns, quote approvals and formal PDF versions.
 6. Booking confirmation, shipment milestones, document storage and customer portal tied to real records.
@@ -28,10 +30,11 @@ China warehouse receipts/consolidation, LCL/FCL/Air/DDP execution, staff Control
 
 ## Release boundaries
 
-The current deployment is an interactive frontend preview. It does not provide real login, persist requests on a server, notify UKR staff, accept payments or confirm bookings. No new hosting plan/database was purchased. Existing production domains and WordPress content are untouched. Public URLs must follow the existing website audit during the WordPress migration.
+The public deployment is an interactive frontend preview. It does not persist public requests on a server, notify UKR staff, accept payments or confirm bookings. The staff backend is deployed on a free web service and refuses authentication/writes until its dedicated database is connected. Paid UKR database creation was approved but blocked by missing Render payment information; none was provisioned. Staff work items are internal tasks, not commercial quotes, shipments or financial transactions. Existing production domains and WordPress content are untouched. Public URLs must follow the existing website audit during the WordPress migration.
 
 ## Validation for this iteration
 
 - Five automated rule tests: invalid route/cargo/date, container restrictions, absence of fabricated rates, gross-margin calculations and handling review flags.
 - Browser testing at desktop 1440px and mobile 390px/320px: request selection, form validation/review, local draft persistence/reopen, container selection and horizontal overflow.
 - Print stylesheet implemented; native print/PDF dialog not exercised automatically.
+- Staff: all 16 combined automated tests passed (authentication/authorization integration and public freight rules), local authenticated desktop/mobile workflows verified, and deployed login/access-panel and public link verified on desktop/mobile. Real PostgreSQL persistence, owner setup and authenticated live-session testing remain pending billing/database activation.
