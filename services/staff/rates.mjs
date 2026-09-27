@@ -1,5 +1,6 @@
+import {normalizeOptions,tierPrice,deliveryCharge,publicOptions,deliveryZones} from './tariff-options.mjs';
 // Customer-facing totals are always calculated here, never accepted from a browser.
-export const products = Object.freeze({ AIR: 'Air cargo', LCL: 'LCL', LCL_DDP: 'DDP*', FCL20: '20ft container', FCL40: '40ft DC / HC', FCL45: '45ft container', FCL40HC: '40ft HC (legacy)', AIR_DDP: 'Air DDP*', ROAD_LTL: 'Shared truck' });
+export const products = Object.freeze({ AIR: 'Air cargo economy', AIR_EXPRESS: 'Air cargo express', LCL: 'LCL', LCL_DDP: 'DDP*', FCL20: '20ft container', FCL40: '40ft DC / HC', FCL45: '45ft container', FCL40HC: '40ft HC (legacy)', AIR_DDP: 'Air DDP*', ROAD_LTL: 'Shared truck' });
 export const currencies = ['AED', 'USD', 'CNY', 'EUR', 'GBP'];
 const bad = message => { const e = new Error(message); e.status = 400; throw e; };
 export const today = () => new Date().toISOString().slice(0, 10);
@@ -22,19 +23,23 @@ export function validateRate(input) {
   const fcl = r.product.startsWith('FCL'), air = r.product.startsWith('AIR');
   r.basis = input.basis;
   if (!(fcl ? ['container'] : air ? ['volumetric_kg'] : ['wm','cbm','actual_kg','volumetric_kg']).includes(r.basis)) bad('Choose a calculation basis suitable for this product.');
-  r.buyRate = num(input.buyRate,0.01,1000000,'buying rate');
-  r.markupType = input.markupType;
-  if (!['percent','fixed'].includes(r.markupType)) bad('Choose percentage markup or a fixed markup per chargeable unit.');
-  r.markup = num(input.markup,0,1000000,'markup');
-  r.unitPrice = Math.round((r.markupType === 'percent' ? r.buyRate*(1+r.markup/100) : r.buyRate+r.markup)*100)/100;
+  r.priceMode=input.priceMode||'buying_markup';
+  if(!['selling','buying_markup'].includes(r.priceMode))bad('Choose a valid price entry mode.');
+  if(r.priceMode==='selling'){
+    r.sellingRate=num(input.sellingRate,0.01,1000000,'customer selling price');r.buyRate=input.buyRate==null||input.buyRate===''?null:num(input.buyRate,0.01,1000000,'buying rate');r.markupType='fixed';r.markup=0;r.unitPrice=r.sellingRate;
+  }else{
+    r.sellingRate=null;r.buyRate=num(input.buyRate,0.01,1000000,'buying rate');r.markupType=input.markupType;
+    if(!['percent','fixed'].includes(r.markupType))bad('Choose percentage or fixed markup.');
+    r.markup=num(input.markup,0,1000000,'markup');r.unitPrice=Math.round((r.markupType==='percent'?r.buyRate*(1+r.markup/100):r.buyRate+r.markup)*100)/100;
+  }
   if (Math.abs(r.unitPrice * 100 - Math.round(r.unitPrice * 100)) > 0.00001) bad('Use at most two decimal places for money.');
   for (const k of ['minimumCharge','originFee','destinationFee','documentationFee']) { r[k] = num(input[k] ?? 0,0,1000000,k); if (Math.abs(r[k]*100-Math.round(r[k]*100))>0.00001) bad('Use at most two decimal places for money.'); }
   r.minimumUnits = fcl ? 1 : Math.max(air ? 5 : 0.01,num(input.minimumUnits,0.01,100000,'minimum chargeable quantity'));
   r.rounding = fcl ? 1 : num(input.rounding,0.01,1000,'rounding increment');
   r.kgPerCbm = num(input.kgPerCbm ?? (r.product === 'ROAD_LTL' ? 350 : 475),1,10000,'kilograms per CBM');
   r.volumetricDivisor = num(input.volumetricDivisor ?? 6000,1000,10000,'air volumetric divisor');
-  r.maxWeight = num(input.maxWeight ?? 1000000,0.01,10000000,'maximum shipment weight');
-  r.maxCbm = num(input.maxCbm ?? 1000,0.01,100000,'maximum CBM');
+  r.maxWeight = input.maxWeight===null||input.maxWeight===''?null:num(input.maxWeight ?? 1000000,0.01,10000000,'maximum shipment weight');
+  r.maxCbm = input.maxCbm===null||input.maxCbm===''?null:num(input.maxCbm ?? 1000,0.01,100000,'maximum CBM');
   r.maxDensity = num(input.maxDensity ?? 0,0,100000,'maximum density (zero means no limit)');
   r.exwFrom = input.exwFrom === '' || input.exwFrom == null ? null : num(input.exwFrom,0,1000000,'EXW starting charge');
   r.containerCbm = num(input.containerCbm || 0,0,200,'container planning capacity');
@@ -45,7 +50,8 @@ export function validateRate(input) {
   r.responseMinutes = num(input.responseMinutes ?? 60,1,10080,'confirmation time in minutes');
   if (!Number.isInteger(r.responseMinutes)) bad('Use whole minutes for confirmation timing.');
   r.ddpConfirmed = input.ddpConfirmed === true;
-  if (r.published && r.product.endsWith('DDP') && (!r.deliveryArea || !r.ddpConfirmed)) bad('Confirm DDP coverage and describe delivery area, duties and tax treatment before publishing.');
+  normalizeOptions(input,r);
+  if (r.published && r.product.endsWith('DDP') && (!r.deliveryArea || (!r.ddpConfirmed&&!r.warehouseOrigin))) bad('Confirm DDP coverage and describe delivery area, duties and tax treatment before publishing.');
   return r;
 }
 export function validateCargo(s, clock = today()) {
@@ -55,7 +61,7 @@ export function validateCargo(s, clock = today()) {
   c.weight = num(s.weight,0.01,10000000,'gross weight'); c.cbm = c.cargoType === 'container' ? 0 : num(s.cbm,0.01,100000,'cargo volume');
   c.containerSize = s.containerSize || '20GP'; c.containers = Number(s.containers || 1);
   if (c.cargoType === 'container' && (!['20GP','40GP','40HC','45HC'].includes(c.containerSize) || !Number.isInteger(c.containers) || c.containers < 1 || c.containers > 100 || ['air','compare'].includes(c.mode))) bad('Full containers need valid equipment, quantity and sea/road mode.');
-  c.ddp = s.ddp === true; c.flex = s.flex === true; c.exw = s.exw === true; c.routeId = str(s.routeId || '',80); return c;
+  c.ddp = s.ddp === true; c.deliveryZone=String(s.deliveryZone||'');if(c.deliveryZone&&!deliveryZones.concat(['collection','other']).includes(c.deliveryZone))bad('Choose a delivery city.');c.deliveryPackages=s.deliveryPackages==null||s.deliveryPackages===''?null:num(s.deliveryPackages,1,1000000,'package count');if(c.deliveryPackages!=null&&!Number.isInteger(c.deliveryPackages))bad('Use a whole package count.'); c.flex = s.flex === true; c.exw = s.exw === true; c.routeId = str(s.routeId || '',80); return c;
 }
 export function compatible(rate, c) {
   if (routeKey(rate.origin) !== routeKey(c.origin) || routeKey(rate.destination) !== routeKey(c.destination)) return false;
@@ -67,9 +73,9 @@ export function compatible(rate, c) {
 export function estimate(rate, cargo, flags = {}, clock = today()) {
   if (!rate.published || clock > rate.validTo || cargo.ready < rate.validFrom || cargo.ready > rate.validTo || !compatible(rate,cargo)) return null;
   const reasons = [];
-  if ((rate.product.startsWith('FCL') ? cargo.weight/cargo.containers : cargo.weight) > rate.maxWeight || (cargo.cbm && cargo.cbm > rate.maxCbm)) reasons.push('Cargo exceeds this tariff’s size or weight limit.');
+  if ((rate.maxWeight!=null && (rate.product.startsWith('FCL') ? cargo.weight/cargo.containers : cargo.weight) > rate.maxWeight) || (rate.maxCbm!=null && cargo.cbm && cargo.cbm > rate.maxCbm)) reasons.push('Cargo exceeds this tariff’s size or weight limit.');
   if (rate.maxDensity && cargo.cbm && cargo.weight / cargo.cbm > rate.maxDensity) reasons.push('Cargo exceeds this tariff’s density limit.');
-  if (flags.dangerous || flags.batteries || flags.oversized || flags.stackable === false) reasons.push('Special handling requires a staff quotation.');
+  if (flags.dangerous || (flags.batteries && rate.sensitivePerKg==null) || (flags.sensitive && rate.sensitivePerKg==null) || (flags.extraCare && rate.carePerKg==null) || flags.oversized || flags.stackable === false) reasons.push('Special handling requires a staff quotation.');
   if (cargo.exw && rate.exwFrom == null) reasons.push('EXW pickup and export customs need a quotation for this route.');
   let raw, unit, formula;
   if (rate.basis === 'container') { raw = cargo.containers; unit = 'container'; formula = `${cargo.containers} container(s)`; }
@@ -79,20 +85,26 @@ export function estimate(rate, cargo, flags = {}, clock = today()) {
   if (rate.basis === 'volumetric_kg') { raw = Math.max(cargo.weight,cargo.cbm*1000000/rate.volumetricDivisor); unit = 'chargeable kg'; formula = `Higher of ${cargo.weight} kg and ${cargo.cbm} CBM × 1,000,000 ÷ ${rate.volumetricDivisor}`; }
   const minimumUnits = rate.product.startsWith('AIR') ? Math.max(5,rate.minimumUnits) : rate.minimumUnits;
   const quantity = Math.round(Math.ceil((Math.max(raw,minimumUnits)-1e-9)/rate.rounding)*rate.rounding*1000000)/1000000;
-  const base = Math.round(Math.round(rate.unitPrice*100)*quantity), min = Math.round(rate.minimumCharge*100);
+  const sellingUnit=tierPrice(rate,quantity);
+  const base = Math.round(Math.round(sellingUnit*100)*quantity), min = Math.round(rate.minimumCharge*100);
   const freight = Math.max(base,min);
-  const charges = [{label:'Freight',amount:freight/100},...['originFee','destinationFee','documentationFee'].map((k,i)=>({label:['Origin charges (per shipment)','Destination charges (per shipment)','Documentation (per shipment)'][i],amount:rate[k]}))].filter(x=>x.amount>0);
+  const charges = [{label:'Freight',code:'freight',amount:freight/100},...['originFee','destinationFee','documentationFee'].map((k,i)=>({label:['Origin charges (per shipment)','Destination charges (per shipment)','Documentation (per shipment)'][i],amount:rate[k]}))].filter(x=>x.amount>0);
   if (cargo.exw && rate.exwFrom != null) charges.push({label:'EXW pickup + export customs (starting charge)',amount:rate.exwFrom});
+  if((flags.batteries||flags.sensitive)&&rate.sensitivePerKg!=null)charges.push({label:'Sensitive or battery cargo',code:'sensitiveFee',amount:Math.round(quantity*rate.sensitivePerKg*100)/100});
+  if(flags.extraCare&&rate.carePerKg!=null)charges.push({label:'Extra care or cosmetics',code:'careFee',amount:Math.round(quantity*rate.carePerKg*100)/100});
+  const delivery=deliveryCharge(rate,cargo,flags);if(delivery?.error)reasons.push(delivery.error);else if(delivery)charges.push(delivery);
+  if(flags.extraCare&&(flags.sensitive||flags.batteries))reasons.push('Combined special-cargo supplements require confirmation.');
+  const review=rate.product.endsWith('DDP')||cargo.exw||flags.extraCare===true||flags.batteries===true||flags.sensitive===true;
   const totalCents = charges.reduce((n,x)=>n+Math.round(x.amount*100),0);
   if (!Number.isSafeInteger(totalCents) || totalCents > 1e12) bad('Shipment value exceeds the online estimate limit.');
   // Explicit allowlist: never serialize rate's buying cost, private notes or owner identifiers.
   return {rateId:rate.id,rateVersion:rate.version,product:rate.product,title:rate.label,currency:rate.currency,validFrom:rate.validFrom,validTo:rate.validTo,
-    status:reasons.length?'REVIEW_REQUIRED':'ESTIMATE',total:reasons.length?null:totalCents/100,quantity,unit,unitPrice:rate.unitPrice,formula,minimumUnits,minimumCharge:rate.minimumCharge,rounding:rate.rounding,charges:reasons.length?[]:charges,
+    status:reasons.length?'REVIEW_REQUIRED':'ESTIMATE',total:reasons.length?null:totalCents/100,quantity,unit,unitPrice:sellingUnit,formula,minimumUnits,minimumCharge:rate.minimumCharge,rounding:rate.rounding,charges:reasons.length?[]:charges,
     inclusions:rate.inclusions,exclusions:rate.exclusions,deliveryArea:rate.deliveryArea,notes:rate.publicNotes,reasons,
-    bookingMode:rate.product.endsWith('DDP')||cargo.exw?'review':rate.bookingMode,responseMinutes:rate.responseMinutes,
-    requiresApproval:rate.product.endsWith('DDP')||cargo.exw, exwFrom:rate.exwFrom??null,
+    bookingMode:review?'review':rate.bookingMode,responseMinutes:rate.responseMinutes,
+    requiresApproval:review, ...publicOptions(rate), exwFrom:rate.exwFrom??null,
     approvalNote:rate.product.endsWith('DDP')?'DDP* is subject to final approval of goods value and commodity.':cargo.exw?'EXW pickup and export customs starting charge is subject to supplier address and cargo confirmation.':'',
-    scope:rate.product.endsWith('DDP')?'DDP within the stated delivery area':rate.product === 'ROAD_LTL'?'Truck route; see inclusions and exclusions':'Port / airport freight; see inclusions and exclusions',
+    scope:rate.warehouseOrigin?'Customer-delivered China warehouse to UAE; goods value and tax treatment subject to approval':rate.product.endsWith('DDP')?'DDP within the stated delivery area':rate.product === 'ROAD_LTL'?'Truck route; see inclusions and exclusions':'Port / airport freight; see inclusions and exclusions',
     notice:'Estimate based on declared cargo. Measurements and cargo acceptance must be verified. UKR booking acceptance does not confirm a carrier reservation.'};
 }
 export function validateContact(d) {
@@ -104,5 +116,6 @@ export function validateContact(d) {
   if (result.declaredValue !== '') num(result.declaredValue,0,1e9,'declared cargo value');
   for (const k of ['stackable','batteries','dangerous','oversized']) { if (typeof d[k]!=='boolean') bad('Complete all handling questions.'); result[k]=d[k]; }
   if (d.consent !== true) bad('Agree to send the request and contact details to UKR.');
+  for(const k of ['sensitive','extraCare'])result[k]=d[k]===true;
   result.consent=true; return result;
 }

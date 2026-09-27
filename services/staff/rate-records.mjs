@@ -3,9 +3,9 @@ import { validateRate,routeKey } from './rates.mjs';
 import {readRoutes} from './routes.mjs';
 const fail=(status,message)=>{throw Object.assign(new Error(message),{status});};
 export async function saveRate(db,input,user,audit,{id=null,dryRun=false}={}) {
-  const rate=validateRate(input);
-  if(rate.routeId){const route=(await readRoutes(db)).find(r=>r.id===rate.routeId);if(!route||!route.products.includes(rate.product))fail(400,'Select a service enabled on the permanent route.');if(rate.published&&!route.active)fail(400,'Activate the route before publishing.');if(routeKey(route.origin)!==routeKey(rate.origin)||routeKey(route.destination)!==routeKey(rate.destination))fail(400,'Route ports changed. Download or reopen the rate again.');}
   const old=id?(await db.query('SELECT * FROM freight_rates WHERE id=$1',[id])).rows[0]:null;
+  const rate=validateRate({...old&&JSON.parse(old.data),...input});
+  if(rate.routeId){const route=(await readRoutes(db)).find(r=>r.id===rate.routeId);if(!route||!route.products.includes(rate.product))fail(400,'Select a service enabled on the permanent route.');if(rate.published&&!route.active)fail(400,'Activate the route before publishing.');if(routeKey(route.origin)!==routeKey(rate.origin)||routeKey(route.destination)!==routeKey(rate.destination))fail(400,'Route ports changed. Download or reopen the rate again.');}
   if(id&&!old)fail(404,'Rate not found.');
   if(old&&old.version!==Number(input.version))fail(409,'This rate changed. Download or reopen the rate before saving.');
   id=old?.id||randomUUID();

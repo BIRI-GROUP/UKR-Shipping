@@ -1,5 +1,32 @@
 import {messages,languages} from './messages.mjs';
 const rows=`
+AIR_EXPRESS|Air cargo express|الشحن الجوي السريع|特快空运|Fret aérien express|Экспресс-авиадоставка|ایکسپریس ایئر کارگو|एक्सप्रेस एयर कार्गो
+airEconomy|Air cargo economy|الشحن الجوي الاقتصادي|经济空运|Fret aérien économique|Экономичная авиадоставка|اکانومی ایئر کارگو|इकॉनमी एयर कार्गो
+deliveryZone|Delivery city / collection|مدينة التوصيل / الاستلام|送货城市／自提|Ville de livraison / retrait|Город доставки / самовывоз|ڈیلیوری شہر / خود وصولی|डिलीवरी शहर / स्वयं संग्रह
+chooseDelivery|Choose the delivery area|اختر منطقة التوصيل|选择送货区域|Choisir la zone de livraison|Выберите район доставки|ڈیلیوری کا علاقہ منتخب کریں|डिलीवरी क्षेत्र चुनें
+dubai|Dubai city limits|داخل حدود مدينة دبي|迪拜市区|Ville de Dubaï|В черте Дубая|دبئی شہر کی حدود|दुबई शहर की सीमा
+sharjah|Sharjah city|مدينة الشارقة|沙迦市区|Ville de Sharjah|Город Шарджа|شارجہ شہر|शारजाह शहर
+ajman|Ajman city|مدينة عجمان|阿治曼市区|Ville d’Ajman|Город Аджман|عجمان شہر|अजमान शहर
+uaq|Umm Al Quwain city|مدينة أم القيوين|乌姆盖万市区|Ville d’Umm Al Quwain|Город Умм-эль-Кайвайн|ام القوین شہر|उम्म अल क्वैन शहर
+rak|Ras Al Khaimah city|مدينة رأس الخيمة|哈伊马角市区|Ville de Ras Al Khaimah|Город Рас-эль-Хайма|راس الخیمہ شہر|रास अल खैमा शहर
+abudhabi|Abu Dhabi city|مدينة أبوظبي|阿布扎比市区|Ville d’Abu Dhabi|Город Абу-Даби|ابوظہبی شہر|अबू धाबी शहर
+alain|Al Ain city|مدينة العين|艾因市区|Ville d’Al Ain|Город Эль-Айн|العین شہر|अल ऐन शहर
+collection|Free collection: Ras Al Khor, Dubai|استلام مجاني: رأس الخور، دبي|免费自提：迪拜拉斯阿尔霍尔|Retrait gratuit : Ras Al Khor, Dubaï|Бесплатный самовывоз: Рас-эль-Хор, Дубай|مفت خود وصولی: راس الخور، دبئی|निःशुल्क संग्रह: रास अल खोर, दुबई
+otherDelivery|Free zone / restricted area / outside city — confirm price|منطقة حرة / مقيّدة / خارج المدينة — السعر يحتاج تأكيدًا|自贸区／受限区域／市区外——费用待确认|Zone franche / accès restreint / hors ville — prix à confirmer|Свободная зона / ограниченный доступ / за городом — цена по запросу|فری زون / محدود علاقہ / شہر سے باہر — نرخ کی تصدیق|फ्री ज़ोन / प्रतिबंधित क्षेत्र / शहर से बाहर — शुल्क की पुष्टि
+deliveryPackages|Number of boxes / packages|عدد الصناديق / الطرود|箱数／件数|Nombre de colis|Количество мест / коробок|ڈبوں / پیکجوں کی تعداد|बक्सों / पैकेजों की संख्या
+deliveryRule|Single-box delivery applies only to air shipments under 25 kg gross. Other shipments use CBM bands. Ground-level cargo handover only.|سعر الصندوق الواحد للشحن الجوي فقط بوزن إجمالي أقل من 25 كغ. الشحنات الأخرى حسب شرائح الحجم. التسليم عند مدخل المبنى فقط.|单箱送货价仅适用于毛重低于25公斤的空运货件。其他货件按立方米档位计费，仅在地面层交货。|Le tarif un colis concerne uniquement l’aérien de moins de 25 kg brut. Les autres envois suivent les tranches en m³. Remise au rez-de-chaussée uniquement.|Тариф за одну коробку действует только для авиагруза массой брутто менее 25 кг. Остальные отправления — по объёму. Выдача на уровне земли.|ایک ڈبے کا نرخ صرف 25 کلوگرام سے کم مجموعی وزن والے ایئر کارگو کے لیے ہے۔ باقی شپمنٹس CBM سلیب کے مطابق ہیں۔ سامان گراؤنڈ لیول پر دیا جائے گا۔|एक बक्से का शुल्क केवल 25 किलोग्राम से कम सकल वजन वाले हवाई माल के लिए है। बाकी शिपमेंट पर CBM स्लैब लागू हैं। सुपुर्दगी केवल भूतल पर होगी।
+sensitive|Sensitive cargo|بضائع حساسة|敏感货物|Marchandises sensibles|Чувствительный груз|حساس سامان|संवेदनशील माल
+extraCare|Extra care / cosmetics|عناية إضافية / مستحضرات تجميل|特殊护理／化妆品|Soins particuliers / cosmétiques|Особый уход / косметика|اضافی احتیاط / کاسمیٹکس|अतिरिक्त देखभाल / कॉस्मेटिक्स
+sensitiveFee|Sensitive / battery surcharge per chargeable kg|إضافة البضائع الحساسة / البطاريات لكل كغ خاضع للشحن|敏感货物／电池附加费，每计费公斤|Supplément sensible / batterie par kg taxable|Доплата за чувствительный груз / батареи за расчётный кг|حساس سامان / بیٹری کا فی چارج ایبل کلو اضافی چارج|संवेदनशील माल / बैटरी अधिभार प्रति प्रभार्य किग्रा
+careFee|Extra care / cosmetics surcharge per chargeable kg|إضافة العناية / التجميل لكل كغ خاضع للشحن|特殊护理／化妆品附加费，每计费公斤|Supplément soins / cosmétiques par kg taxable|Доплата за особый уход / косметику за расчётный кг|اضافی احتیاط / کاسمیٹکس کا فی چارج ایبل کلو اضافی چارج|अतिरिक्त देखभाल / कॉस्मेटिक्स अधिभार प्रति प्रभार्य किग्रा
+delivery|Local cargo delivery|توصيل البضائع محليًا|本地货物配送|Livraison locale du fret|Местная доставка груза|مقامی کارگو ڈیلیوری|स्थानीय माल डिलीवरी
+transit|Estimated transit (days)|مدة النقل التقديرية (أيام)|预计运输时间（天）|Transit estimé (jours)|Ориентировочный транзит (дни)|تخمینی ٹرانزٹ (دن)|अनुमानित परिवहन समय (दिन)
+stock|Route containers in hand (all sizes)|حاويات المسار المتاحة (كل الأحجام)|该路线可用集装箱（所有尺寸合计）|Conteneurs de la liaison (toutes tailles)|Контейнеры на маршруте (все размеры)|روٹ پر دستیاب کنٹینرز (تمام سائز)|मार्ग पर उपलब्ध कंटेनर (सभी आकार)
+stockNote|Availability and shipping-order allocation require reconfirmation.|التوفر وتخصيص أمر الشحن يحتاجان إلى إعادة تأكيد.|可用量及配舱单分配需再次确认。|Disponibilité et attribution de l’ordre de transport à reconfirmer.|Наличие и выделение shipping order требуют повторного подтверждения.|دستیابی اور شپنگ آرڈر کی الاٹمنٹ کی دوبارہ تصدیق ضروری ہے۔|उपलब्धता और शिपिंग ऑर्डर आवंटन की दोबारा पुष्टि आवश्यक है।
+tier5|Up to 5 CBM|حتى 5 متر مكعب|不超过5立方米|Jusqu’à 5 m³|До 5 м³|5 CBM تک|5 CBM तक
+tier10|Above 5 to 10 CBM|أكثر من 5 وحتى 10 متر مكعب|超过5至10立方米|Plus de 5 à 10 m³|Свыше 5 до 10 м³|5 سے زیادہ، 10 CBM تک|5 से अधिक, 10 CBM तक
+tier20|Above 10 to 20 CBM|أكثر من 10 وحتى 20 متر مكعب|超过10至20立方米|Plus de 10 à 20 m³|Свыше 10 до 20 м³|10 سے زیادہ، 20 CBM تک|10 से अधिक, 20 CBM तक
+tierAbove20|Above 20 CBM|أكثر من 20 متر مكعب|超过20立方米|Plus de 20 m³|Свыше 20 м³|20 CBM سے زیادہ|20 CBM से अधिक
 skipContent|Skip to content|انتقل إلى المحتوى|跳至正文|Aller au contenu|Перейти к содержимому|مواد پر جائیں|मुख्य सामग्री पर जाएँ
 otherService|Need a different service? Send your cargo details for a tailored quotation.|هل تحتاج إلى خدمة أخرى؟ أرسل تفاصيل بضاعتك للحصول على عرض سعر مخصص.|需要其他服务？请提交货物信息，获取定制报价。|Besoin d’un autre service ? Envoyez les détails de votre marchandise pour un devis adapté.|Нужна другая услуга? Отправьте сведения о грузе для индивидуального расчёта.|کسی اور سروس کی ضرورت ہے؟ اپنی ضرورت کے مطابق نرخ حاصل کرنے کے لیے سامان کی تفصیلات بھیجیں۔|कोई दूसरी सेवा चाहिए? अपनी ज़रूरत के अनुसार कोटेशन पाने के लिए माल का विवरण भेजें।
 shipping|Shipping estimate|تقدير الشحن|运费估算|Estimation d’expédition|Расчёт перевозки|شپنگ کا تخمینہ|शिपिंग अनुमान

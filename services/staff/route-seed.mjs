@@ -27,3 +27,15 @@ export async function addApprovedChinaRoutes(store) {
     await db.query('INSERT INTO ukr_sequences (name,value) VALUES ($1,1)',[key]);
   });
 }
+export async function addExpressAirService(store){
+ await store.tx(async db=>{
+  const key='migration-china-express-service-20260927';
+  if((await db.query('SELECT value FROM ukr_sequences WHERE name=$1',[key])).rows.length)return;
+  for(const route of await readRoutes(db)){
+   if(!route.id.startsWith('ukr-cn-')||!route.products.includes('AIR')||route.products.includes('AIR_EXPRESS'))continue;
+   const data={...route,products:[...route.products,'AIR_EXPRESS']};delete data.id;delete data.version;
+   await db.query('UPDATE freight_routes SET version=version+1,data=$1,updated_at=$2 WHERE id=$3',[JSON.stringify(data),Date.now(),route.id]);
+  }
+  await db.query('INSERT INTO ukr_sequences (name,value) VALUES ($1,1)',[key]);
+ });
+}

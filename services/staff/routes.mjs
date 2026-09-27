@@ -1,3 +1,4 @@
+import {publicOptions} from './tariff-options.mjs';
 import { products, routeKey, today, estimate, validateCargo } from './rates.mjs';
 export const decodeRate = row => ({...JSON.parse(row.data),id:row.id,version:row.version});
 export const decodeRoute = row => ({...JSON.parse(row.data),id:row.id,version:row.version,active:!!row.active});
@@ -25,11 +26,11 @@ export function rateBelongs(r,route){return r.routeId?r.routeId===route.id:route
 export function enabledRate(rate,routes){const r=rate.routeId?routes.find(r=>r.id===rate.routeId):routes.find(r=>rateBelongs(rate,r));if(!r)return !rate.routeId;return !!r.active&&r.products.includes(rate.product);}
 export function canonicalCargo(search,routes){const found=resolveRoutes(routes,search);if(found.length>1)fail('Several routes match. Select a specific route before estimating.');if(search.routeId&&!found.length)fail('This route is unavailable. Search again.');return found[0]?{...search,routeId:found[0].id,origin:found[0].origin,destination:found[0].destination}:search;}
 export function quickOptions(route,rates,ready=today()) {
-  return route.products.map(product=>{
+  return [...route.products].sort((a,b)=>Object.keys(products).indexOf(a)-Object.keys(products).indexOf(b)).map(product=>{
     const r=rates.filter(r=>rateBelongs(r,route)&&r.product===product&&r.published&&r.validFrom<=ready&&r.validTo>=ready&&r.validTo>=today()).sort((a,b)=>b.validFrom.localeCompare(a.validFrom))[0];
     const base={product,title:products[product],routeId:route.id,origin:route.origin,destination:route.destination,terminal:product.startsWith('AIR')?`${route.airOrigin||'Origin airport to confirm'} → ${route.airDestination||'Destination airport to confirm'}`:`${route.origin} → ${route.destination}`};
     if(!r)return {...base,available:false};
-    return {...base,available:true,rateId:r.id,currency:r.currency,unitPrice:r.unitPrice,unit:r.basis==='container'?'container':r.basis==='wm'?'chargeable CBM':r.basis==='cbm'?'CBM':'kg',minimumUnits:product.startsWith('AIR')?Math.max(5,r.minimumUnits):r.minimumUnits,minimumCharge:r.minimumCharge,validFrom:r.validFrom,validTo:r.validTo,exwFrom:r.exwFrom??null,inclusions:r.inclusions,exclusions:r.exclusions,notes:r.publicNotes,approval:product.endsWith('DDP')};
+    return {...base,...publicOptions(r),available:true,rateId:r.id,currency:r.currency,unitPrice:r.tier5==null?r.unitPrice:Math.min(r.tier5,r.tier10,r.tier20,r.tierAbove20),unit:r.basis==='container'?'container':r.basis==='wm'?'chargeable CBM':r.basis==='cbm'?'CBM':'kg',minimumUnits:product.startsWith('AIR')?Math.max(5,r.minimumUnits):r.minimumUnits,minimumCharge:r.minimumCharge,validFrom:r.validFrom,validTo:r.validTo,exwFrom:r.exwFrom??null,inclusions:r.inclusions,exclusions:r.exclusions,notes:r.publicNotes,approval:product.endsWith('DDP')};
   });
 }
 export function magicCosts(input,route,rates) {
@@ -46,7 +47,7 @@ export function magicCosts(input,route,rates) {
     if(r.product.startsWith('FCL')){
       if(!r.containerCbm)continue;
       fill=cbm/r.containerCbm;
-      if(fill<.85||fill>1||weight>r.maxWeight)continue;
+      if(fill<.85||fill>1||(r.maxWeight!=null&&weight>r.maxWeight))continue;
       cargo={...c,mode:'sea',cargoType:'container',cbm:0,containers:1,containerSize:({FCL20:'20GP',FCL40:'40GP',FCL40HC:'40HC',FCL45:'45HC'})[r.product]};
     }else if(!r.product.startsWith('AIR')&&!r.product.startsWith('LCL'))continue;
     const offer=estimate(r,cargo);
