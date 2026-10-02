@@ -11,6 +11,7 @@ if (digest !== '33a0d2bb8abe19734e06f9b7cb9883217117770ddcb1aadc2b1ef367962b2253
 await writeFile('preview/hero.svg', `<svg xmlns="http://www.w3.org/2000/svg" width="467" height="372" viewBox="0 0 467 372"><image width="467" height="372" href="data:image/webp;base64,${data}"/></svg>`);
 await import('./build.mjs');
 await import('./revision4.mjs');
+await import('./finalize4.mjs');
 const path = 'preview-dist/index.html';
 let html = await readFile(path, 'utf8');
 const csp = `<meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data:; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; connect-src 'none'; form-action 'none'; base-uri 'none'; object-src 'none'">`;
