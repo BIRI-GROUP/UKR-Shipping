@@ -12,6 +12,7 @@ await writeFile('preview/hero.svg', `<svg xmlns="http://www.w3.org/2000/svg" wid
 await import('./build.mjs');
 await import('./revision4.mjs');
 await import('./finalize4.mjs');
+await import('./approved-photo.mjs');
 const path = 'preview-dist/index.html';
 let html = await readFile(path, 'utf8');
 const csp = `<meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data:; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; connect-src 'none'; form-action 'none'; base-uri 'none'; object-src 'none'">`;
