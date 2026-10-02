@@ -18,7 +18,7 @@ if (createHash('sha256').update(data).digest('hex') !== sha256)
 
 const path = 'preview-dist/index.html';
 const before = await readFile(path, 'utf8');
-const oldSource = 'class="hero-photo" src="/assets/hero.svg"';
+const oldSource = 'class="hero-photo" src="/assets/hero.svg?v=4"';
 const newSource = 'class="hero-photo" src="/assets/' + filename + '"';
 if (before.split(oldSource).length !== 2) throw new Error('Expected exactly one existing hero.');
 const after = before.replace(oldSource, newSource);
