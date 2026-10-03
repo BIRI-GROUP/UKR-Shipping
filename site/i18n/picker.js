@@ -55,7 +55,7 @@
       root.lang=meta(current).tag;root.dir=meta(current).dir;root.dataset.ukrI18n=current;
       // Only explicit keyed UI nodes are translated. Form values and files are never rewritten.
       const catalog=window.UKRPageMessages || {};
-      for(const el of document.querySelectorAll('[data-i18n]')){const key=el.dataset.i18n;const text=catalog[current]?.[key]??catalog.en?.[key];if(text!==undefined)el.textContent=text;}
+      for(const el of document.querySelectorAll('[data-i18n]')){if(el.closest('[translate=no],[data-user-content],[data-no-translate]'))continue;const key=el.dataset.i18n;const text=catalog[current]?.[key]??catalog.en?.[key];if(text!==undefined)el.textContent=text;}
       let note=document.querySelector('.ukr-language-notice');if(!note){note=make('div','ukr-language-notice');note.setAttribute('data-no-translate','');const header=document.querySelector('header');if(header)header.after(note);else document.body.prepend(note);}
       note.textContent=noticeText[current];note.lang=meta(current).tag;note.dir=meta(current).dir;note.hidden=current==='en'||root.dataset.ukrTranslationComplete==='true';
       window.dispatchEvent(new CustomEvent('ukr:languagechange',{detail:{language:current}}));
@@ -76,8 +76,8 @@
     widget.append(trigger,list,status);
     if(host)host.append(widget);else{const bar=make('div','ukr-language-fallback');bar.append(widget);document.body.prepend(bar);}
     paint();if(mode==='inline')inline();else{root.dir=meta(current).dir;root.dataset.ukrI18n=current;}
-    // Carry only the language on preview links, never customer or shipment details.
-    if(mode==='inline')document.addEventListener('click',event=>{const link=event.target.closest('a[href]');if(!link||link.hasAttribute('download'))return;const raw=link.getAttribute('href');if(!raw||raw.startsWith('#'))return;let url;try{url=new URL(link.href,location.href);}catch{return;}if(url.origin!==location.origin||!/\/$|\.html$/.test(url.pathname))return;url.searchParams.set('lang',current);link.href=url.href;},true);
+    // Carry only the language on internal page links, including when storage is blocked.
+    document.addEventListener('click',event=>{const link=event.target.closest('a[href]');if(!link||link.hasAttribute('download'))return;const raw=link.getAttribute('href');if(!raw||raw.startsWith('#'))return;let url;try{url=new URL(link.href,location.href);}catch{return;}if(url.origin!==location.origin||!/\/$|\.html$/.test(url.pathname))return;link.href=L.urlFor(url.href,current,mode);},true);
     window.UKRLanguagePicker=Object.freeze({get language(){return current;},setLanguage(id){if(L.languages.some(item=>item.id===id))select(id);}});
   }
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',run,{once:true});else run();
