@@ -13,7 +13,7 @@ html[data-ukr-translation-complete] .contact-actions,html[data-ukr-translation-c
 html[data-ukr-translation-complete] .fields .field,html[data-ukr-translation-complete] .kbody{min-width:0}
 html[data-ukr-translation-complete] .field select{min-width:0;max-width:100%;text-overflow:ellipsis}
 html[data-ukr-translation-complete] .kbody th,html[data-ukr-translation-complete] .kbody td{text-align:start}
-html[data-ukr-translation-complete][dir=rtl] .hero-copy{margin-inline-start:auto;text-align:start}
+html[data-ukr-translation-complete][dir=rtl] .hero-copy{margin-inline-start:0;margin-inline-end:auto;text-align:start}
 html[data-ukr-translation-complete][dir=rtl] .hero-photo{right:auto;left:0;object-position:left bottom;mask-image:linear-gradient(to left,transparent,#000 26%);-webkit-mask-image:linear-gradient(to left,transparent,#000 26%)}
 html[data-ukr-translation-complete][dir=rtl] .mobile-toggle{margin-left:0;margin-inline-start:auto}
 html[data-ukr-translation-complete][dir=rtl] .benefits .inline-item{border-right:0;border-inline-end:1px solid #dce8f2}
