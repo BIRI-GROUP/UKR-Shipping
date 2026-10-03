@@ -38,3 +38,13 @@ check('headline and legal identity',html.includes('Book &amp; Ship.')&&html.incl
 for(const path of ['knowledge.html','knowledge/container-sizes.html','knowledge/what-is-cbm.html','knowledge/how-to-calculate-cbm.html','knowledge/cbm-calculator.html'])check('page '+path,(await readFile(`${out}/${path}`,'utf8')).includes('UKR SEA Shipping CO LLC'));
 const report={passed:checks.length,checks,portCount:ports.length,countriesWithMaritimePorts:new Set(ports.map(p=>p.countryCode)).size,sourceRelease:data.metadata.release,sourceSha256:data.metadata.archiveSha256,chinaPorts:search('China').length,uaePorts:search('UAE').length,examples:search('China').slice(0,12).map(p=>({code:p.code,name:p.name})),scope:'Build syntax and full-dataset checks. Browser interaction checks are separate.'};
 await writeFile(`${out}/build-checks.json`,JSON.stringify(report,null,2));console.log('UKR_VERIFIED_BUILD '+JSON.stringify(report));
+
+// Language foundation is additive and runs after the existing revision-04 validation.
+const {execFileSync}=await import('node:child_process');
+execFileSync(process.execPath,['--test','tests/languages.test.mjs'],{stdio:'inherit'});
+const {buildPreviewLanguages}=await import('./language-build.mjs');
+const languageReport=await buildPreviewLanguages(out);
+assert.deepEqual(languageReport.order,['en','ar','ru','fr','ur','hi','zh']);
+for(const file of ['i18n/languages.js','i18n/picker.js','i18n/preview-ui.js','i18n/page-messages.js'])new vm.Script(await readFile(`${out}/${file}`,'utf8'),{filename:file});
+for(const page of languageReport.pages)assert.ok((await readFile(`${out}/${page}`,'utf8')).includes('data-ukr-language-mode="inline"'),'Missing language integration: '+page);
+console.log('UKR_LANGUAGE_BUILD_CHECKS '+JSON.stringify({pages:languageReport.pages.length,order:languageReport.order,translationStatus:languageReport.translationStatus}));
