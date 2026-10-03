@@ -13,6 +13,11 @@ await import('./build.mjs');
 await import('./revision4.mjs');
 await import('./finalize4.mjs');
 await import('./approved-photo.mjs');
+// The same Booking Lab build now requires complete authored translations on every page.
+const {completeTranslation} = await import('./translation-release.mjs');
+await completeTranslation();
+const {execFileSync} = await import('node:child_process');
+execFileSync(process.execPath, ['--test', 'tests/translation-release.test.mjs'], {stdio:'inherit'});
 const path = 'preview-dist/index.html';
 let html = await readFile(path, 'utf8');
 const csp = `<meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data:; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; connect-src 'none'; form-action 'none'; base-uri 'none'; object-src 'none'">`;
