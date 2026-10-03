@@ -2,7 +2,7 @@ import {readFile,mkdir,copyFile} from 'node:fs/promises';
 import vm from 'node:vm';
 const sourceRoot = new URL('./',import.meta.url);
 const context={};vm.runInNewContext(await readFile(new URL('languages.js',sourceRoot),'utf8'),context);
-export const languages = context.UKRLocales.languages;
+export const languages = Object.freeze(Array.from(context.UKRLocales.languages, locale=>Object.freeze({...locale})));
 export async function copyLanguageAssets(out) {
   await mkdir(`${out}/i18n`,{recursive:true});
   for(const file of ['languages.js','picker.js','picker.css']){
