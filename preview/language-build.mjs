@@ -15,7 +15,8 @@ export async function buildPreviewLanguages(out='preview-dist',{publicMessages}=
   addDraftCopy(catalog,sourceKeys);
   await copyLanguageAssets(out);
   await copyFile(new URL('language-ui.js',import.meta.url),`${out}/i18n/preview-ui.js`);
-  const safeJSON=value=>JSON.stringify(value).replaceAll('<','\u003c').replaceAll(' ','\u2028').replaceAll(' ','\u2029');
+  const slash=String.fromCharCode(92);
+  const safeJSON=value=>JSON.stringify(value).replaceAll('<',slash+'u003c').replaceAll(String.fromCharCode(8232),slash+'u2028').replaceAll(String.fromCharCode(8233),slash+'u2029');
   await writeFile(`${out}/i18n/page-messages.js`,`window.UKRPageMessages=${safeJSON(catalog)};\nwindow.UKRPageSourceKeys=${safeJSON(sourceKeys)};\n`);
   const pages=[];
   async function visit(dir){for(const entry of await readdir(dir,{withFileTypes:true})){const path=`${dir}/${entry.name}`;if(entry.isDirectory()){if(!['assets','data','i18n'].includes(entry.name))await visit(path);}else if(entry.name.endsWith('.html')){const html=addLanguageShell(await readFile(path,'utf8'),{mode:'inline',preview:true});await writeFile(path,html);pages.push(path.slice(out.length+1));}}}
