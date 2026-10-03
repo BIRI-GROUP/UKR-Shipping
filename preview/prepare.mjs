@@ -30,3 +30,11 @@ version.artworkVerified = true;
 version.connectPolicy = 'none';
 await writeFile(versionPath, JSON.stringify(version));
 console.log('Preview artwork verified; browser API connections and form submissions blocked.');
+
+// Apply only the approved header/tracking rearrangement; preserve the service module and artwork.
+const {releaseHeader} = await import('./header/release.mjs');
+await releaseHeader();
+execFileSync(process.execPath, ['--test', 'tests/translation-release.test.mjs', 'tests/header.test.mjs'], {
+  stdio:'inherit', env:{...process.env, UKR_HEADER_BUILD:'1'}
+});
+console.log('UKR header verified. Country lookup enabled; live booking, payment and tracking APIs remain disabled.');
