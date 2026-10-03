@@ -1,0 +1,31 @@
+/* Additive header control: no logo, artwork, colour-token or content-layout replacement. */
+.ukr-language{position:relative;display:inline-flex;align-items:center;flex-shrink:0;font-family:inherit;font-size:13px;z-index:90;text-transform:none;letter-spacing:normal}
+.ukr-language button{font:inherit;cursor:pointer;letter-spacing:normal;text-transform:none}
+.ukr-language-trigger{display:inline-flex;align-items:center;gap:8px;min-height:40px;border:1px solid #d9e4ed;border-radius:7px;padding:7px 10px;background:#fff;color:#062e54;white-space:nowrap}
+.ukr-language-trigger svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.6}
+.ukr-language-trigger .ukr-chevron{width:12px;height:12px}
+.ukr-language-list{position:absolute;inset-inline-end:0;top:calc(100% + 8px);width:250px;max-width:calc(100vw - 32px);max-height:min(420px,70vh);overflow-y:auto;background:#fff;border:1px solid #d9e4ed;border-radius:10px;padding:7px;box-shadow:0 12px 32px #062e5426;color:#173850;z-index:100}
+.ukr-language-list[hidden]{display:none!important}
+.ukr-language-option{display:flex;align-items:center;gap:12px;width:100%;min-height:45px;border:0;border-radius:6px;text-align:start;background:#fff;color:#173850;padding:9px 10px}
+.ukr-language-option:hover,.ukr-language-option[aria-selected=true]{background:#edf5fb;color:#0765af}
+.ukr-language-option .ukr-code{margin-inline-start:auto;direction:ltr;font-size:11px}
+.ukr-language .ukr-flag{font-size:20px;line-height:1;min-width:25px;text-align:center}
+.ukr-language button:focus-visible{outline:3px solid #219cec;outline-offset:2px}
+.ukr-language-status{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)}
+.ukr-language-notice{font-family:inherit;font-size:12px;line-height:1.65;background:#f0f6fb;color:#315c7a;padding:10px max(20px,calc((100% - 1240px)/2));border-block-end:1px solid #d9e4ed}
+.ukr-language-notice[hidden]{display:none!important}
+.ukr-language-fallback{display:flex;justify-content:flex-end;padding:8px 20px}
+html[data-ukr-i18n] .utility .wrap,html[data-ukr-i18n] .utility-links{flex-wrap:wrap}
+html[data-ukr-i18n] .utility-links{gap:14px}
+html[data-ukr-i18n] .nav{margin-left:0;margin-inline-start:auto}
+html[data-ukr-i18n] .service-tab{text-align:start}
+html[data-ukr-i18n] .service-tab strong,html[data-ukr-i18n] .service-tab small{white-space:normal;overflow-wrap:anywhere;line-height:1.4}
+html[data-ukr-i18n] .navline{flex-wrap:wrap}
+html[data-ukr-i18n] input[type=email],html[data-ukr-i18n] input[type=tel],html[data-ukr-i18n] input[type=number],html[data-ukr-i18n] input[type=date]{direction:ltr}
+html[data-ukr-i18n][dir=rtl] .drawer{left:0;right:auto;margin-left:0;margin-right:auto}
+html[data-ukr-i18n][dir=rtl] .combo-list{left:auto;right:0}
+html[data-ukr-i18n][dir=rtl] .hero-layout{text-align:start}
+html[data-ukr-i18n][dir=rtl] .brand,html[data-ukr-i18n][dir=rtl] .footer-brand{direction:ltr}
+@media(max-width:600px){.ukr-language-trigger{min-height:38px}.utility .wrap{padding-block:5px}.ukr-language-list{position:fixed;inset-inline:auto;right:12px;top:84px;width:250px}html[dir=rtl] .ukr-language-list{right:auto;left:12px}.ukr-language-trigger .ukr-current-name{display:none}}
+
+.ukr-drawer-language{display:flex;flex-direction:column;gap:4px;font-size:11px;max-width:145px;margin-inline-start:auto}.ukr-drawer-language select{font:inherit;border:1px solid #d9e4ed;border-radius:5px;background:#fff;color:#173850;padding:6px;max-width:100%}.drawer-head{flex-wrap:wrap}html[data-ukr-i18n][dir=rtl] .dropdown{left:auto;right:0}

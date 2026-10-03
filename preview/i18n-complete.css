@@ -1,0 +1,30 @@
+/* Locale adaptation only. Brand assets, colour tokens and the booking structure remain unchanged. */
+html[data-ukr-translation-complete] .ukr-language-notice{display:none!important}
+html[data-ukr-translation-complete] :where(h1,h2,h3,p,a,label,button,small,strong){overflow-wrap:break-word}
+html[data-ukr-translation-complete] .navline{gap:18px}
+html[data-ukr-translation-complete] .nav{flex-wrap:wrap;gap:16px}
+html[data-ukr-translation-complete] .nav a,html[data-ukr-translation-complete] .nav summary{white-space:normal}
+html[data-ukr-translation-complete] .knowledge-header .wrap{flex-wrap:wrap}
+html[data-ukr-translation-complete] .knowledge-nav{flex-wrap:wrap;justify-content:flex-end;gap:14px}
+html[data-ukr-translation-complete] .hero-copy{max-width:61%}
+html[data-ukr-translation-complete]:not([lang=en]) .hero h1{font-size:clamp(32px,4.2vw,59px);line-height:1.14}
+html[data-ukr-translation-complete]:not([lang=en]) .hero h1 span{font-size:clamp(26px,3vw,43px);line-height:1.2}
+html[data-ukr-translation-complete] .contact-actions,html[data-ukr-translation-complete] .footer-bottom{flex-wrap:wrap}
+html[data-ukr-translation-complete] .fields .field,html[data-ukr-translation-complete] .kbody{min-width:0}
+html[data-ukr-translation-complete] .field select{min-width:0;max-width:100%;text-overflow:ellipsis}
+html[data-ukr-translation-complete] .kbody th,html[data-ukr-translation-complete] .kbody td{text-align:start}
+html[data-ukr-translation-complete][dir=rtl] .hero-copy{margin-inline-start:0;margin-inline-end:auto;text-align:start}
+html[data-ukr-translation-complete][dir=rtl] .hero-photo{right:auto;left:0;object-position:left bottom;mask-image:linear-gradient(to left,transparent,#000 26%);-webkit-mask-image:linear-gradient(to left,transparent,#000 26%)}
+html[data-ukr-translation-complete][dir=rtl] .mobile-toggle{margin-left:0;margin-inline-start:auto}
+html[data-ukr-translation-complete][dir=rtl] .benefits .inline-item{border-right:0;border-inline-end:1px solid #dce8f2}
+html[data-ukr-translation-complete][dir=rtl] .brand,html[data-ukr-translation-complete][dir=rtl] .footer-brand{direction:ltr}
+html[lang=ar] :where(h1,h2,h3,.eyebrow),html[lang=ur] :where(h1,h2,h3,.eyebrow){letter-spacing:normal!important}
+html[lang=ur] :where(p,label,small,button,a){line-height:1.85}
+.ukr-file-native{position:absolute!important;width:1px!important;height:1px!important;padding:0!important;opacity:0;clip-path:inset(50%)}
+.ukr-file-button{width:fit-content}.ukr-file-status{font-size:12px;line-height:1.6}
+[translate=no],.code{unicode-bidi:isolate}.kbody .table-scroll{max-width:100%}.port-suggestion{font-size:11px;display:block;color:var(--muted)}
+@media(max-width:980px){html[data-ukr-translation-complete] .hero-copy{max-width:58%}html[data-ukr-translation-complete] .nav{margin-inline-start:0}.knowledge-nav .ukr-language{margin-inline-start:0}}
+@media(max-width:600px){html[data-ukr-translation-complete] .hero-copy{max-width:100%}html[data-ukr-translation-complete] .hero h1{font-size:36px}html[data-ukr-translation-complete] .hero h1 span{font-size:28px}html[data-ukr-translation-complete][dir=rtl] .hero-photo{object-position:center;mask-image:linear-gradient(to bottom,transparent,#000 12%);-webkit-mask-image:linear-gradient(to bottom,transparent,#000 12%)}.knowledge-header .wrap{gap:8px}.knowledge-nav{font-size:12px;flex:1 1 100%}.knowledge-nav .ukr-language{margin-inline-start:auto}.drawer-head{gap:10px}.drawer-head>div:first-child{flex:1 1 180px}.contact-actions{gap:14px}.utility-links>a{font-size:11px}.port-field .combo-list{min-width:0!important}.service-tab:last-child{text-align:start}}
+@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto!important}*,*::before,*::after{transition:none!important;animation:none!important}}
+html[data-ukr-translation-complete] .coming-page header{flex-wrap:wrap}
+html[data-ukr-translation-complete] .coming-page header>.ukr-language{margin-inline-start:auto}
