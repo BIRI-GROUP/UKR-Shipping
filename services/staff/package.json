@@ -1,9 +1,24 @@
 {
   "name": "ukr-staff-platform",
   "private": true,
-  "version": "0.1.0",
+  "version": "1.0.0",
   "type": "module",
   "engines": { "node": ">=24 <25" },
-  "scripts": { "start": "node server.mjs", "test": "node --test ../../tests/staff.test.mjs ../../tests/commerce.test.mjs ../../tests/route-commerce.test.mjs ../../tests/freight-rules.test.cjs" },
-  "dependencies": { "pg": "8.23.0", "exceljs": "4.4.0" }
+  "scripts": {
+    "start": "node server.mjs",
+    "portal": "node phase1/start.mjs",
+    "migrate": "node phase1/db.mjs --apply",
+    "test": "node --test ../../tests/staff.test.mjs ../../tests/commerce.test.mjs ../../tests/route-commerce.test.mjs ../../tests/freight-rules.test.cjs",
+    "test:portal": "node --test --test-concurrency=1 ../../tests/phase1/*.test.mjs"
+  },
+  "dependencies": {
+    "pg": "8.23.0",
+    "exceljs": "4.4.0",
+    "pdfkit": "0.20.2",
+    "nodemailer": "10.0.13",
+    "imapflow": "2.2.1",
+    "mailparser": "3.9.32",
+    "busboy": "1.6.0",
+    "ipaddr.js": "2.5.0"
+  }
 }

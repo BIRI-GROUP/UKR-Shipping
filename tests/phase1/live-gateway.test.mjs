@@ -1,0 +1,16 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {Writable} from 'node:stream';
+import {createLiveGateway,release} from '../../services/staff/live-gateway.mjs';
+import {customerCopyMissing} from '../../services/staff/phase1/i18n.mjs';
+const diagnostics=async()=>({persistentDisk:false,schemaVerified:false,production:true});
+const gateway=await createLiveGateway({store:null,env:{NODE_ENV:'production'},diagnostics});
+const response=()=>{let body='';const headers={};const res=new Writable({write(chunk,_,done){body+=chunk;done();}});res.setHeader=(k,v)=>headers[k.toLowerCase()]=v;res.writeHead=(s,h={})=>{res.statusCode=s;for(const [k,v]of Object.entries(h))res.setHeader(k,v);};return {res,headers,body:()=>body};};
+for(const path of ['/staff/','/customer/'])test('publishes original portal page '+path,async()=>{const r=response();assert.equal(await gateway.handle({url:path,method:'GET'},r.res),true);assert.equal(r.res.statusCode,200);assert.ok(r.body().includes('id="loginForm"'));assert.ok(r.body().includes(release));assert.ok(r.body().includes('/portal-admin.js'));assert.equal(r.headers['cache-control'],'no-store');});
+for(const path of ['/portal.js','/portal-admin.js','/portal.css','/portal-i18n.js','/logo.svg'])test('publishes required local asset '+path,async()=>{const r=response();await gateway.handle({url:path,method:'GET'},r.res);assert.equal(r.res.statusCode,200);assert.ok(r.body().length>0);});
+test('safe public readiness contains no credentials',async()=>{const r=response();await gateway.handle({url:'/api/portal/status',method:'GET'},r.res);assert.deepEqual(JSON.parse(r.body()),{release,signInAvailable:false,emailDeliveryConfigured:false});});
+test('does not invent OTP delivery or enable test authentication',async()=>{const r=response();await gateway.handle({url:'/api/portal/auth/start',method:'POST'},r.res);assert.equal(r.res.statusCode,503);assert.ok(!r.headers['set-cookie']);assert.equal(gateway.ready,false);});
+test('unauthenticated current-user check remains 401',async()=>{const r=response();await gateway.handle({url:'/api/portal/me',method:'GET'},r.res);assert.equal(r.res.statusCode,401);});
+test('original application routes remain delegated',async()=>{const r=response();assert.equal(await gateway.handle({url:'/api/login',method:'POST'},r.res),false);});
+test('canonical entry point keeps selected language',async()=>{const r=response();await gateway.handle({url:'/customer?lang=ar',method:'GET'},r.res);assert.equal(r.res.statusCode,308);assert.equal(r.headers.location,'/customer/?lang=ar');});
+test('readiness message has all seven translations',()=>assert.deepEqual(customerCopyMissing(['Email delivery is not configured. Contact UKR.']),[]));
