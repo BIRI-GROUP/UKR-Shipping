@@ -1,7 +1,7 @@
 name: Portal access release
 on:
   push:
-    branches: ['release/portal-access-2026-10-04', 'main']
+    branches: ['release/portal-access-2026-10-04', 'fix/username-demo-login-2026-10-04', 'main']
   pull_request:
     branches: ['main']
 permissions:
@@ -27,6 +27,13 @@ jobs:
       TEST_DATABASE_URL: postgres://ukr_test:isolated_ci_only@127.0.0.1:5432/ukr_release_test
     steps:
       - uses: actions/checkout@v4
+      - name: Archive checked-out source
+        run: git archive --format=zip --output=ukr-login-source.zip HEAD
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ukr-login-source
+          path: ukr-login-source.zip
+          retention-days: 3
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
