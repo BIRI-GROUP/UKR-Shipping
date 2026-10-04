@@ -38,7 +38,7 @@ jobs:
       - name: Existing authentication and database regression tests
         run: node --test --test-concurrency=1 tests/phase1/*.test.mjs tests/phase2/*.test.mjs
       - name: Private review HTTP and PostgreSQL access boundaries
-        run: node --test tests/review.test.mjs
+        run: node --test tests/review.test.mjs tests/review-ui.test.mjs
       - run: tests/browser/node_modules/.bin/playwright install --with-deps chromium
       - name: Existing authenticated portal browser suite
         run: node tests/browser/phase1.mjs
