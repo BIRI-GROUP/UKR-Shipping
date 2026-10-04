@@ -7,7 +7,7 @@ on:
 permissions:
   contents: read
 concurrency:
-  group: phase1-${{ github.ref }}
+  group: portal-${{ github.ref }}
   cancel-in-progress: true
 jobs:
   postgres:
@@ -34,8 +34,7 @@ jobs:
         run: npm install --prefix services/staff --ignore-scripts
       - name: Existing SQLite regressions
         run: node --test tests/staff.test.mjs tests/commerce.test.mjs tests/route-commerce.test.mjs tests/freight-rules.test.cjs tests/booking-lab.test.mjs
-      - name: Phase 1 tests
-        if: hashFiles('tests/phase1/postgres.test.mjs') != ''
+      - name: Portal PostgreSQL and unit tests
         env:
           NODE_ENV: test
           AUTH_TEST_MODE: 'true'
