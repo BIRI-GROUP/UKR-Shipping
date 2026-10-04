@@ -52,19 +52,27 @@ jobs:
       - name: Prepare isolated offline test runtime
         if: always()
         run: |
-          mkdir -p test-toolchain/bin test-toolchain/pgsql test-toolchain/share
+          mkdir -p test-toolchain/bin test-toolchain/pgsql test-toolchain/share test-toolchain/lib
           cp "$(command -v node)" test-toolchain/bin/node
           container=$(docker ps -q --filter ancestor=postgres:18 | head -n 1)
           test -n "$container"
           docker exec "$container" tar -h -C /usr/lib/postgresql/18 -cf - . | tar -xf - -C test-toolchain/pgsql
           docker exec "$container" tar -h -C /usr/share/postgresql/18 -cf - . | tar -xf - -C test-toolchain/share
+          docker exec "$container" sh -c 'cd /usr/lib/x86_64-linux-gnu && tar -h -cf - liburing.so.2 libpq.so.5' | tar -xf - -C test-toolchain/lib
           cp -a services/staff/node_modules test-toolchain/node_modules
           cp services/staff/package-lock.json test-toolchain/package-lock.json
           npm audit --prefix services/staff --json > test-toolchain/npm-audit.json || true
           tar -czf ukr-test-toolchain.tar.gz test-toolchain
+          tar -czf ukr-test-libs.tar.gz test-toolchain/lib
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: ukr-test-toolchain
           path: ukr-test-toolchain.tar.gz
+          retention-days: 1
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ukr-test-libs
+          path: ukr-test-libs.tar.gz
           retention-days: 1
