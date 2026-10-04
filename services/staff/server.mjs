@@ -8,8 +8,16 @@ import {fileURLToPath} from 'node:url';
 
 export async function startService(env=process.env){
  const origin=env.APP_ORIGIN||'https://ukr-staff-staging.onrender.com';
+ if(env.PORTAL_REVIEW_ENABLED==='true'){
+  const {reviewConfig}=await import('./review-gateway.mjs');reviewConfig(env);
+ }
  const store=env.DATABASE_URL?await postgresStore(env.DATABASE_URL):null;
  const legacy=await createHandler({store,origin,ownerEmail:env.OWNER_EMAIL,setupTokenHash:env.SETUP_TOKEN_HASH,setupExpires:Number(env.SETUP_EXPIRES_AT||0)});
+ if(env.PORTAL_REVIEW_ENABLED==='true'){
+  const {startReview}=await import('./review-gateway.mjs');
+  try{return await startReview({env,passwords:{hashPassword,verifyPassword},legacyFactory:createHandler,legacyHandler:legacy,publicStore:store});}
+  catch(error){await store?.close();throw error;}
+ }
  const {createLiveGateway}=await import('./live-gateway.mjs');
  const gateway=await createLiveGateway({store,env,passwords:{hashPassword,verifyPassword},legacyFactory:createHandler});
  const server=http.createServer(async(req,res)=>{
