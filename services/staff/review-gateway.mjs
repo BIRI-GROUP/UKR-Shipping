@@ -50,7 +50,7 @@ const assets={
  '/portal.css':['../../apps/shared/portal.css','text/css; charset=utf-8'],
  '/logo.svg':['../../site/assets/ukr-shipping-blue.svg','image/svg+xml']
 };
-const gateHTML=`<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><meta name="ukr-release" content="${REVIEW_RELEASE}"><title>UKR private portal access</title><link rel="stylesheet" href="/portal.css"><script src="/review-entry.js" defer></script></head><body><section id="authView"><div class="auth-brand"><img src="/logo.svg" width="230" alt="UKR Shipping"><h1>UKR SEA SHIPPING CO LLC</h1><a href="https://ukr-booking-lab.onrender.com/">UKR Booking Lab</a></div><main class="auth-card"><label id="reviewLanguageLabel" for="reviewLanguage">Language</label><select id="reviewLanguage"></select><h2 id="reviewTitle">Private test workspace</h2><p id="reviewIntro">Open your private access link to review the portals. Code 1234 alone does not unlock this workspace.</p><form id="reviewUnlock"><label><span id="reviewKeyLabel">Private access key</span><input name="key" type="password" required maxlength="100" autocomplete="off"></label><button id="reviewButton" type="submit">Open workspace</button></form><p id="reviewMessage" role="status"></p><p id="reviewError" class="error" role="alert"></p><p id="reviewWarning">Use test records only. No email is sent.</p></main></section></body></html>`;
+const gateHTML=`<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><meta name="ukr-release" content="${REVIEW_RELEASE}"><title>UKR private portal access</title><link rel="stylesheet" href="/portal.css"><script src="/review-entry.js" defer></script></head><body><section id="authView"><div class="auth-brand"><img src="/logo.svg" width="230" alt="UKR Shipping"><h1>UKR SEA SHIPPING CO LLC</h1><a href="https://ukr-booking-lab.onrender.com/">UKR Booking Lab</a></div><main class="auth-card"><label id="reviewLanguageLabel" for="reviewLanguage">Language</label><select id="reviewLanguage"></select><h2 id="reviewTitle">Private test workspace</h2><p id="reviewIntro">Enter your private access key to review the portals. Code 1234 alone does not unlock this workspace.</p><form id="reviewUnlock" action="/api/review/unlock" method="post"><input type="hidden" name="target" value="staff"><label><span id="reviewKeyLabel">Private access key</span><input name="key" type="password" required maxlength="100" autocomplete="off"></label><button id="reviewButton" type="submit">Open workspace</button></form><p id="reviewMessage" role="status"></p><p id="reviewError" class="error" role="alert"></p><p id="reviewWarning">Use test records only. No email is sent.</p></main></section></body></html>`;
 function headers(res){res.setHeader('Cache-Control','no-store');res.setHeader('X-Content-Type-Options','nosniff');res.setHeader('X-Frame-Options','DENY');res.setHeader('Referrer-Policy','no-referrer');res.setHeader('X-Robots-Tag','noindex, nofollow');res.setHeader('Content-Security-Policy',"default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'");}
 async function body(req){if(req.headers['content-type']?.split(';')[0]!=='application/json')throw Error('json');let size=0,parts=[];for await(const b of req){size+=b.length;if(size>65536)throw Error('size');parts.push(b);}const bytes=Buffer.concat(parts),data=JSON.parse(bytes);if(!data||Array.isArray(data)||typeof data!=='object')throw Error('body');return {data,bytes};}
 const gateName=c=>c.secure?'__Host-ukr_review':'ukr_review_local';
@@ -70,7 +70,8 @@ export async function reviewHandler({store,c,env,passwords,legacyFactory,legacyH
    if(path==='/review-entry.js'&&read){res.setHeader('Content-Type',assets[path][1]);return res.end(req.method==='HEAD'?'':await readFile(new URL(assets[path][0],import.meta.url)));}
    if(path==='/api/review/unlock'&&req.method==='POST'){
     if(req.headers.origin!==c.origin)return reply({error:'untrusted_origin'},403);
-    const {data}=await body(req),now=Date.now();
+    const isForm=req.headers['content-type']?.split(';')[0]==='application/x-www-form-urlencoded';let data;
+    if(isForm){let raw='',size=0;for await(const chunk of req){size+=chunk.length;if(size>1024)throw Error('size');raw+=chunk.toString();}data=Object.fromEntries(new URLSearchParams(raw));}else data=(await body(req)).data;const now=Date.now();
     const address=req.socket?.remoteAddress||'unknown',limitKey='gate:'+hash(address);
     const allow=await store.tx(async db=>{
      const row=(await db.query('SELECT * FROM auth_limits WHERE key=$1',[limitKey])).rows[0];
@@ -79,12 +80,13 @@ export async function reviewHandler({store,c,env,passwords,legacyFactory,legacyH
     });if(!allow)return reply({error:'too_many_requests'},429);
     if(now>=c.expires||typeof data.key!=='string'||!/^[A-Za-z0-9_-]{43}$/.test(data.key)||!equal(hash(data.key),c.accessHash))return reply({error:'private_access_required'},403);
     const needsSetup=Number((await store.query('SELECT count(*) AS n FROM staff_users')).rows[0].n)===0;
-    res.setHeader('Set-Cookie',cookie(c,issueGate(c)));return reply({ok:true,needsSetup});
+    res.setHeader('Set-Cookie',cookie(c,issueGate(c)));
+    if(isForm){const target=data.target==='customer'?'/customer/':'/staff/';res.writeHead(303,{Location:target+(target==='/staff/'&&needsSetup?'#setup='+data.key:'')});return res.end();}return reply({ok:true,needsSetup});
    }
    const granted=validGate(c,cookieValue(req,gateName(c)));
    if(!granted){
     if(path.startsWith('/api/'))return reply({error:'private_access_required'},401);
-    if((path==='/'||['/staff','/staff/','/staff.html','/customer','/customer/','/portal.html'].includes(path))&&read){res.setHeader('Content-Type','text/html; charset=utf-8');return res.end(req.method==='HEAD'?'':gateHTML);}
+    if((path==='/'||['/staff','/staff/','/staff.html','/customer','/customer/','/portal.html'].includes(path))&&read){res.setHeader('Content-Type','text/html; charset=utf-8');return res.end(req.method==='HEAD'?'':gateHTML.replace('name="target" value="staff"','name="target" value="'+(path.startsWith('/customer')?'customer':'staff')+'"'));}
     if(!['/logo.svg','/portal.css'].includes(path))return reply({error:'not_found'},404);
    }
    if(path==='/portal-i18n.js'&&read){res.setHeader('Content-Type','text/javascript; charset=utf-8');return res.end(req.method==='HEAD'?'':browserBundle());}
