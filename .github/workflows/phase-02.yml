@@ -47,7 +47,7 @@ jobs:
           cp -a tests/browser/node_modules/. runtime/browser/
           docker cp "$PG_CONTAINER:/usr/lib/postgresql/18" runtime/postgres
           docker cp "$PG_CONTAINER:/usr/share/postgresql/18" runtime/share-postgres
-          for lib in $(docker exec "$PG_CONTAINER" sh -c 'ldd /usr/lib/postgresql/18/bin/postgres /usr/lib/postgresql/18/bin/initdb /usr/lib/postgresql/18/bin/psql /usr/lib/postgresql/18/bin/pg_dump' | awk '/=> \/|^\// {for(i=1;i<=NF;i++) if($i ~ /^\//)print $i}' | sort -u); do
+          for lib in $(docker exec "$PG_CONTAINER" sh -c 'ldd /usr/lib/postgresql/18/bin/postgres /usr/lib/postgresql/18/bin/initdb /usr/lib/postgresql/18/bin/psql /usr/lib/postgresql/18/bin/pg_dump' | awk '/=>/ {for(i=1;i<=NF;i++) if($i ~ /^\//)print $i}' | sort -u); do
             docker cp -L "$PG_CONTAINER:$lib" runtime/lib/
           done
           tar -czf ukr-phase2-runtime.tar.gz runtime
