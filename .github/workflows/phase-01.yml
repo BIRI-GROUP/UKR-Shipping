@@ -1,4 +1,4 @@
-name: UKR Phase 1
+name: UKR Portal Validation
 on:
   push:
     branches: ['phase/01-foundation-2026-10-04']
@@ -41,3 +41,12 @@ jobs:
           AUTH_TEST_MODE: 'true'
           TEST_DATABASE_URL: postgres://ukr_test:isolated_ci_only@127.0.0.1:5432/ukr_phase1_test
         run: node --test --test-concurrency=1 tests/phase1/*.test.mjs
+      - name: Archive committed source for reproducible review
+        if: always()
+        run: git archive --format=zip --output=ukr-source.zip HEAD
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ukr-source-snapshot
+          path: ukr-source.zip
+          retention-days: 3
