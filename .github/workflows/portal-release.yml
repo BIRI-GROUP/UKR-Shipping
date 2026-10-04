@@ -43,7 +43,9 @@ jobs:
       - run: node --test --test-concurrency=1 tests/phase1/*.test.mjs tests/phase2/*.test.mjs
       - run: tests/browser/node_modules/.bin/playwright install --with-deps chromium
       - run: node tests/browser/phase1.mjs
-      - name: Check actual published portal URLs
+      - name: Test username login in disposable PostgreSQL and Chromium
+        run: UKR_DEMO_BROWSER_MODE=local node tests/browser/live-portals.mjs
+      - name: Check actual published portal URLs and demonstration sign-in
         if: github.ref == 'refs/heads/main' && github.event_name == 'push'
         run: node tests/browser/live-portals.mjs
       - uses: actions/upload-artifact@v4
