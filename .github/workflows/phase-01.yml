@@ -1,0 +1,76 @@
+name: UKR Portal Validation
+on:
+  push:
+    branches: ['phase/01-foundation-2026-10-04', 'phase/02-*', 'phase/03-*', 'phase/04-*', 'phase/05-*', 'phase/06-*', 'phase/07-*', 'phase/08-*']
+  pull_request:
+    branches: ['draft/booking-homepage-2026-10-02', 'phase/**']
+permissions:
+  contents: read
+concurrency:
+  group: portal-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  postgres:
+    if: github.repository == 'BIRI-GROUP/UKR-Shipping'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_USER: ukr_test
+          POSTGRES_PASSWORD: isolated_ci_only
+          POSTGRES_DB: ukr_phase1_test
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U ukr_test -d ukr_phase1_test"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      NODE_ENV: test
+      AUTH_TEST_MODE: 'true'
+      TEST_DATABASE_URL: postgres://ukr_test:isolated_ci_only@127.0.0.1:5432/ukr_phase1_test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Install dependencies
+        run: npm install --prefix services/staff --ignore-scripts
+      - name: Existing SQLite regressions
+        run: node --test tests/staff.test.mjs tests/commerce.test.mjs tests/route-commerce.test.mjs tests/freight-rules.test.cjs tests/booking-lab.test.mjs
+      - name: Portal PostgreSQL and unit tests
+        run: node --test --test-concurrency=1 tests/phase1/*.test.mjs
+      - name: Install browser test runtime
+        run: |
+          npm install --prefix tests/browser --ignore-scripts
+          tests/browser/node_modules/.bin/playwright install --with-deps chromium
+      - name: Authenticated portal browser tests
+        run: node tests/browser/phase1.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ukr-browser-results
+          path: tests/evidence/browser/
+          retention-days: 7
+      - name: Archive committed source for reproducible review
+        if: always()
+        run: git archive --format=zip --output=ukr-source.zip HEAD
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ukr-source-snapshot
+          path: ukr-source.zip
+          retention-days: 3
+      - name: Prepare isolated offline browser runtime
+        if: always()
+        run: |
+          mkdir -p test-browser
+          cp -a tests/browser/node_modules test-browser/node_modules
+          cp -a ~/.cache/ms-playwright test-browser/browsers
+          tar -czf ukr-test-browser.tar.gz test-browser
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ukr-test-browser
+          path: ukr-test-browser.tar.gz
+          retention-days: 1
