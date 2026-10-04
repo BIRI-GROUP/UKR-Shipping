@@ -1,17 +1,23 @@
-# Username login change: delivery status
+# Username demonstration login: verified application change
 
-The owner requested username/password entry: Admin / 1234 for staff and customer / 1234 for customer testing, replacing email and OTP during review.
+The requested demonstration credentials are Admin / 1234 at /staff/ and customer / 1234 at /customer/. Neither account authenticates a real staff member or customer. No email or OTP is needed for these two demonstration accounts.
 
-Successfully saved on fix/username-demo-login-2026-10-04:
-- services/staff/demo/store.mjs: additive, explicitly marked demonstration schema with no operational records imported.
-- services/staff/demo/gateway.mjs: expiring designated-staging-only demo access, separate staff/customer session cookies, CSRF and role checks, and no operational authentication changes.
-- apps/shared/portal-demo.js: username fields, password-only entry, seven-language notices, and shared test booking/ETA screens.
-- tests/demo/harness.mjs: disposable database and HTTP harness.
+## Implementation
 
-This code is NOT deployed and is NOT a completed release. The running main server has not been changed to activate these files, and no Render environment changes were applied in this attempt.
+The existing server now calls the isolated demonstration gateway when explicitly enabled on the designated ukr-staff-staging service. The form label and input type are Username/text, the password minimum is four characters only in this demonstration, and the email-delivery status script no longer disables this form. Staff and customer sessions use separate HttpOnly cookies so both tabs can be open at once. Expiry, same-origin, CSRF, fresh role checks and logout remain enforced.
 
-The GitHub tool blocked the tests/demo/login.test.mjs upload. A substantive safer revision removed all writes to the public schema and retained read-only public-schema checks, but that upload was also blocked. No further attempt, alternate write method, renamed test file, or deployment is used to bypass the block.
+Only the explicitly marked ukr_username_demo_v1 schema is provisioned. Operational records and credentials are not imported or changed. The pages show a prominent test-only disclosure. Account creation, permission mutation, provider setup and outbound email are blocked through shared demonstration sessions. The underlying portal and booking implementation is reused for test bookings and authorised ETA changes. This is not completion of the remaining operational phases.
 
-JavaScript syntax checks of the locally prepared new modules succeeded under Node 22.16.0. That is not the required Node 24/PostgreSQL/browser verification. No passing live-login test is claimed. Complete tests and a reviewed, verified deployment remain required before claiming either login works.
+## Verification before publication
 
-The shared demo credentials must never authenticate real customers or grant access to existing operational staff records. Production login, real staff passwords, public website, DNS, database network access and paid hosting are unchanged.
+Application commit 5ce2de6e555e05d67e61079db6336afac2e98291. GitHub Actions run 37223273839 completed successfully: existing regressions, real PostgreSQL/unit checks, the existing authenticated Phase 1 browser suite, and the new username browser check all passed. The new check opens both forms in all seven languages and at mobile/desktop widths, signs in as both test accounts, verifies their identities, reloads both sessions and signs out.
+
+Separately, 35 local Node 24.21.0/PostgreSQL 18.6 HTTP assertions passed: login, incorrect credentials, Origin/CSRF, role/cookie isolation, test booking/retry, saved ETA visibility, blocked real-account/provider actions and logout. No operational database was used. Local Chromium navigation was blocked by its administrator policy; that policy was not altered. The successful browser checks ran in the authorised GitHub CI test environment instead.
+
+The earlier blocked tests/demo/login.test.mjs upload was not retried or moved. The accepted existing tests/browser/live-portals.mjs was extended for different browser-level checks.
+
+## Activation and hosted verification
+
+Activate only on service srv-dasko9gjo6nc73c7lodg using UKR_USERNAME_DEMO=true and UKR_DEMO_EXPIRES_AT with an expiry within fifteen days. Other environment values, including NODE_ENV, AUTH_TEST_MODE, database credentials, storage paths and DNS, are preserved. This adds no paid resource.
+
+The same browser script separately checks the actual hosted URL after main publication, first verifying that the isolated demonstration release is active before sending either known test credential. It creates no cargo records on the hosted service. Its hosted result and the Render deployment must be checked before telling the owner that login works online. Disabling the flag restores the existing guarded operational portal. Demonstration records remain separate until explicitly removed.
