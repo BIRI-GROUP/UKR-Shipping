@@ -49,3 +49,20 @@ jobs:
           name: ukr-source-snapshot
           path: ukr-source.zip
           retention-days: 3
+      - name: Prepare isolated offline test runtime
+        if: always()
+        run: |
+          mkdir -p test-toolchain/bin test-toolchain/pgsql test-toolchain/share
+          cp "$(command -v node)" test-toolchain/bin/node
+          container=$(docker ps -q --filter ancestor=postgres:18 | head -n 1)
+          test -n "$container"
+          docker cp "$container":/usr/lib/postgresql/18/. test-toolchain/pgsql/
+          docker cp "$container":/usr/share/postgresql/18/. test-toolchain/share/
+          cp -a services/staff/node_modules test-toolchain/node_modules
+          tar -czf ukr-test-toolchain.tar.gz test-toolchain
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ukr-test-toolchain
+          path: ukr-test-toolchain.tar.gz
+          retention-days: 1
