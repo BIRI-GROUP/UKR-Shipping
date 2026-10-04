@@ -1,0 +1,43 @@
+name: UKR Phase 1
+on:
+  push:
+    branches: ['phase/01-foundation-2026-10-04']
+  pull_request:
+    branches: ['draft/booking-homepage-2026-10-02']
+permissions:
+  contents: read
+concurrency:
+  group: phase1-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  postgres:
+    if: github.repository == 'BIRI-GROUP/UKR-Shipping'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_USER: ukr_test
+          POSTGRES_PASSWORD: isolated_ci_only
+          POSTGRES_DB: ukr_phase1_test
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U ukr_test -d ukr_phase1_test"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Install existing dependencies
+        run: npm install --prefix services/staff --ignore-scripts
+      - name: Existing SQLite regressions
+        run: node --test tests/staff.test.mjs tests/commerce.test.mjs tests/route-commerce.test.mjs tests/freight-rules.test.cjs tests/booking-lab.test.mjs
+      - name: Phase 1 tests
+        if: hashFiles('tests/phase1/postgres.test.mjs') != ''
+        env:
+          NODE_ENV: test
+          AUTH_TEST_MODE: 'true'
+          TEST_DATABASE_URL: postgres://ukr_test:isolated_ci_only@127.0.0.1:5432/ukr_phase1_test
+        run: node --test --test-concurrency=1 tests/phase1/*.test.mjs
