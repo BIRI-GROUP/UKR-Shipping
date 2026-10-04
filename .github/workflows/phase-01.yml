@@ -30,7 +30,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
-      - name: Install existing dependencies
+      - name: Install dependencies
         run: npm install --prefix services/staff --ignore-scripts
       - name: Existing SQLite regressions
         run: node --test tests/staff.test.mjs tests/commerce.test.mjs tests/route-commerce.test.mjs tests/freight-rules.test.cjs tests/booking-lab.test.mjs
@@ -56,9 +56,11 @@ jobs:
           cp "$(command -v node)" test-toolchain/bin/node
           container=$(docker ps -q --filter ancestor=postgres:18 | head -n 1)
           test -n "$container"
-          docker cp "$container":/usr/lib/postgresql/18/. test-toolchain/pgsql/
-          docker cp "$container":/usr/share/postgresql/18/. test-toolchain/share/
+          docker exec "$container" tar -h -C /usr/lib/postgresql/18 -cf - . | tar -xf - -C test-toolchain/pgsql
+          docker exec "$container" tar -h -C /usr/share/postgresql/18 -cf - . | tar -xf - -C test-toolchain/share
           cp -a services/staff/node_modules test-toolchain/node_modules
+          cp services/staff/package-lock.json test-toolchain/package-lock.json
+          npm audit --prefix services/staff --json > test-toolchain/npm-audit.json || true
           tar -czf ukr-test-toolchain.tar.gz test-toolchain
       - uses: actions/upload-artifact@v4
         if: always()
