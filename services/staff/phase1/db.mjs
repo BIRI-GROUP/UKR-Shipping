@@ -30,6 +30,16 @@ async function apply(db,name,sql){const checksum=createHash('sha256').update(sql
   if(old){if(old.checksum!==checksum)throw Error('Applied migration checksum changed: '+name);return;}
   await q.query(sql);await q.query('INSERT INTO ukr_schema_migrations(name,checksum) VALUES($1,$2)',[name,checksum]);
 });}
-export async function requireSchema(db){const result=await db.query("SELECT name FROM ukr_schema_migrations WHERE name='0004_foundation_invariants.sql'");if(!result.rows.length)throw Error('Phase 1 migrations must be explicitly applied before startup');}
+export async function requireSchema(db,{directory=new URL('../migrations/',import.meta.url),legacy=true}={}) {
+  const expected=[];
+  if(legacy)for(const [name,path]of [['0000a_staff',new URL('../schema.sql',import.meta.url)],['0000b_booking_lab',new URL('../../booking-lab/schema.sql',import.meta.url)]])expected.push([name,await readFile(path,'utf8')]);
+  for(const name of (await readdir(directory)).filter(f=>/^\d{4}_[a-z0-9_]+\.sql$/.test(f)).sort())expected.push([name,await readFile(new URL(name,directory),'utf8')]);
+  const result=await db.query('SELECT name,checksum FROM ukr_schema_migrations');
+  const applied=new Map(result.rows.map(row=>[row.name,row.checksum]));
+  for(const [name,sql]of expected){
+    if(!applied.has(name))throw Error('Required migration is not applied: '+name);
+    if(applied.get(name)!==createHash('sha256').update(sql).digest('hex'))throw Error('Applied migration checksum changed: '+name);
+  }
+}
 async function main(){if(!process.argv.includes('--apply'))throw Error('Use --apply only against an approved database');const db=await openDatabase(process.env.DATABASE_URL);try{const files=await migrate(db);console.log('Applied/verified '+files.length+' numbered migrations; no mail or deployment performed.');}finally{await db.close();}}
 if(process.argv[1]&&resolve(process.argv[1])===fileURLToPath(import.meta.url))main().catch(e=>{console.error('Migration failed:',e.code||e.message);process.exitCode=1;});
