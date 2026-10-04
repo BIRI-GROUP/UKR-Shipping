@@ -3,12 +3,13 @@ import {createAuth} from './auth.mjs';
 import {api} from './api.mjs';
 import {must,fail} from './core.mjs';
 import {loadLegacyRoleNames} from './users.mjs';
+import {browserBundle} from './i18n.mjs';
 const staticFiles={
  '/staff/':['../../../apps/staff/portal.html','text/html; charset=utf-8'],
  '/customer/':['../../../apps/customer/index.html','text/html; charset=utf-8'],
  '/portal.js':['../../../apps/shared/portal.js','text/javascript; charset=utf-8'],
+ '/portal-admin.js':['../../../apps/shared/portal-admin.js','text/javascript; charset=utf-8'],
  '/portal.css':['../../../apps/shared/portal.css','text/css; charset=utf-8'],
- '/portal-i18n.js':['../../../apps/shared/portal-i18n.js','text/javascript; charset=utf-8'],
  '/logo.svg':['../../../site/assets/ukr-shipping-blue.svg','image/svg+xml']
 };
 export async function readBody(req){must(req.headers['content-type']?.split(';')[0]==='application/json',415,'json_required');let length=0,chunks=[];for await(const chunk of req){length+=chunk.length;must(length<=65536,413,'request_too_large');chunks.push(chunk);}try{const result=JSON.parse(Buffer.concat(chunks).toString('utf8'));must(result&&typeof result==='object'&&!Array.isArray(result));return result;}catch{fail(400,'invalid_input');}}
@@ -18,6 +19,7 @@ export async function createPortalHandler({store,config,passwords,legacyFactory,
  const name=config.secure?'__Host-ukr_portal':'ukr_portal_test',pendingName=config.secure?'__Host-ukr_pending':'ukr_pending_test';
  const cookie=(key,value,age)=>`${key}=${value}; Path=/; HttpOnly; SameSite=Strict; Max-Age=${age}${config.secure?'; Secure':''}`;
  const getCookie=(req,key)=>(req.headers.cookie||'').split(';').map(s=>s.trim()).find(s=>s.startsWith(key+'='))?.slice(key.length+1)||'';
+ const languageJS=browserBundle();
  return async(req,res)=>{
   res.setHeader('Cache-Control','no-store');res.setHeader('X-Content-Type-Options','nosniff');res.setHeader('X-Frame-Options','DENY');res.setHeader('Referrer-Policy','no-referrer');res.setHeader('Content-Security-Policy',"default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'");if(config.secure)res.setHeader('Strict-Transport-Security','max-age=31536000');
   const json=(v,status=200)=>{res.writeHead(status,{'Content-Type':'application/json; charset=utf-8'});res.end(JSON.stringify(v));};
@@ -26,8 +28,9 @@ export async function createPortalHandler({store,config,passwords,legacyFactory,
    if(mutation)must(req.headers.origin===config.origin,403,'untrusted_origin');
    if(path==='/healthz')return json({status:'ready',phase:1,emailSending:false});
    if(path==='/robots.txt'){res.writeHead(200,{'Content-Type':'text/plain'});return res.end('User-agent: *\nDisallow: /\n');}
-   if(['/','/staff.html','/portal.html'].includes(path)&&method==='GET'){res.writeHead(302,{Location:(path==='/portal.html'?'/customer/':'/staff/')+url.hash});return res.end();}
-   if(staticFiles[path]&&['GET','HEAD'].includes(method)){const [file,type]=staticFiles[path];res.writeHead(200,{'Content-Type':type});return res.end(method==='HEAD'?'':await readFile(new URL(file,import.meta.url)));}
+   if(['/','/staff.html','/portal.html'].includes(path)&&method==='GET'){res.writeHead(302,{Location:(path==='/portal.html'?'/customer/':'/staff/')+url.search});return res.end();}
+   if(path==='/portal-i18n.js'&&['GET','HEAD'].includes(method)){res.writeHead(200,{'Content-Type':'text/javascript; charset=utf-8'});return res.end(method==='HEAD'?'':languageJS);}
+   if(staticFiles[path]&&['GET','HEAD'].includes(method)){const [file,type]=staticFiles[path];let content=method==='HEAD'?'':await readFile(new URL(file,import.meta.url));if(type.startsWith('text/html')&&method!=='HEAD')content=content.toString('utf8').replace('</head>','<script src="/portal-admin.js" defer></script></head>');res.writeHead(200,{'Content-Type':type});return res.end(content);}
    if(['/api/setup','/api/accept-invite','/api/reset-password'].includes(path)&&method==='POST')return legacy(req,res);
    if(path==='/api/status'&&method==='GET')return legacy(req,res);
    if(!path.startsWith('/api/portal/'))fail(404,'not_found');
