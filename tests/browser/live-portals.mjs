@@ -1,16 +1,19 @@
-/** Hosted demonstration smoke check. It never authenticates operational accounts or creates cargo. */
+/** Demonstration browser check. Operational accounts and cargo are never used. */
 import assert from 'node:assert/strict';
 import {mkdir,writeFile} from 'node:fs/promises';
 import {chromium} from 'playwright';
-const origin='https://ukr-staff-staging.onrender.com';
+const local=process.env.UKR_DEMO_BROWSER_MODE==='local';
+let fixture=null;
+if(local){assert.equal(process.env.NODE_ENV,'test');const {harness}=await import('../demo/harness.mjs');fixture=await harness();}
+const origin=fixture?.origin||'https://ukr-staff-staging.onrender.com';
 const release='username-demo-1';
-const evidence='tests/evidence/live-portals';await mkdir(evidence,{recursive:true});
+const evidence='tests/evidence/'+(local?'local-username':'live-portals');await mkdir(evidence,{recursive:true});
 let status;
-for(let n=0;n<40;n++){
+for(let n=0;n<(local?1:40);n++){
  try{const r=await fetch(origin+'/api/portal/status',{signal:AbortSignal.timeout(12000)});if(r.ok){const v=await r.json();if(v.demo===true&&v.demoRelease===release&&v.signInAvailable===true){status=v;break;}}}catch{}
- await new Promise(r=>setTimeout(r,6000));
+ if(!local)await new Promise(r=>setTimeout(r,6000));
 }
-assert.ok(status,'The isolated demonstration must be active before sending any demonstration credentials');
+if(!status){await fixture?.close();throw Error('The isolated demonstration must be active before sending demonstration credentials');}
 const browser=await chromium.launch({headless:true}),errors=[],checks=[];
 const check=(name,value)=>{assert.ok(value,name);checks.push(name);};
 try{
@@ -51,6 +54,6 @@ try{
   check(kind+' logout works',await sessions[index].locator('#loginForm').isVisible());
  }
  check('No JavaScript exceptions',errors.length===0);
- await writeFile(evidence+'/results.json',JSON.stringify({origin,release,checks,errors,liveBrowser:true,authenticatedDemoLoginTested:true,operationalAccountsUsed:false,emailsSent:0,cargoRecordsCreated:0},null,2));
- console.log('UKR_LIVE_USERNAME_CHECK '+JSON.stringify({checks:checks.length,errors,authenticatedDemoLoginTested:true}));
-}finally{await browser.close();}
+ await writeFile(evidence+'/results.json',JSON.stringify({origin,release,checks,errors,hosted:!local,authenticatedDemoLoginTested:true,operationalAccountsUsed:false,emailsSent:0,cargoRecordsCreated:0},null,2));
+ console.log('UKR_USERNAME_BROWSER_CHECK '+JSON.stringify({checks:checks.length,errors,hosted:!local,authenticatedDemoLoginTested:true}));
+}finally{await browser.close();await fixture?.close();}
