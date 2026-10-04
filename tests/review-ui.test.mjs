@@ -1,0 +1,19 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {readFile} from 'node:fs/promises';
+import vm from 'node:vm';
+import {randomUUID} from 'node:crypto';
+const source=await readFile(new URL('../apps/shared/portal-review.js',import.meta.url),'utf8');
+function harness(kind,company){
+ const screens=new Map(),requests=[],nodes=[],forms=[],tables=[];
+ const raw=(tag,value)=>{const el={tag,value,children:[],style:{},elements:{},append(...children){this.children.push(...children);},setAttribute(){}};nodes.push(el);return el;};
+ const U={state:{kind,locale:'en'},raw,copy:raw,t:x=>x,has:()=>true,register:(id,fn)=>screens.set(id,fn),clear:label=>raw('section',label),button:(label,action)=>Object.assign(raw('button',label),{action}),render:async page=>screens.get(kind+':'+page)?.(),formatDate:x=>x||'Not available',dialog:(title,fn)=>fn(raw('dialog',title)),data:f=>Object.fromEntries(Object.entries(f.elements).map(([k,v])=>[k,v.value])),field:(f,name,label,opts={})=>{f.elements[name]={value:opts.value||opts.options?.[0]?.value||'',opts};},submit:(form,label,action,after)=>forms.push({form,label,action,after}),table:(box,items,cols,action)=>tables.push({items,cols,action}),request:async(path,data,method)=>{requests.push({path,data,method});if(path==='/customer/profile')return {company,phone:'test-phone'};if(path.startsWith('/bookings'))return data?{booking:{id:randomUUID()}}:{items:[],events:[]};throw Error('Unexpected request '+path);}};
+ const messages=Object.fromEntries(['en','ar','ru','fr','ur','hi','zh'].map(l=>[l,{}]));
+ vm.runInNewContext(source,{window:{UKRPortal:U,UKRPortalMessages:messages},document:{body:{prepend(){}}},crypto:{randomUUID}});
+ return {screens,requests,nodes,forms,tables,U,messages};
+}
+test('first customer dashboard and shipment list route to company setup without an unauthorised API call',async()=>{for(const screen of ['dashboard','shipments','booking']){const h=harness('customer',null);await h.screens.get('customer:'+screen)();assert.deepEqual(h.requests.map(x=>x.path),['/customer/profile']);assert.ok(h.nodes.some(n=>n.value==='Company account'));assert.equal(h.tables.length,0);}});
+test('an existing test company reads the real scoped booking endpoint',async()=>{const h=harness('customer',{id:randomUUID(),legal_name:'Test Company'});await h.screens.get('customer:dashboard')();assert.deepEqual(h.requests.map(x=>x.path),['/customer/profile','/bookings']);assert.equal(h.tables.length,1);});
+test('customer entry sends only canonical intake values and a retry key',async()=>{const h=harness('customer',{id:randomUUID(),legal_name:'Test Company'});await h.screens.get('customer:booking')();const f=h.forms[0];f.form.elements.cargo_summary.value='Synthetic cartons';await f.action();const out=h.requests.at(-1);assert.equal(out.path,'/bookings');assert.equal(out.data.service,'air_ddp');assert.equal(out.data.legal_owner_name,'Test Company');assert.equal(out.data.origin_country,'CN');assert.equal(out.data.destination_country,'AE');assert.ok(out.data.request_key);assert.equal(out.data.customer_id,undefined);assert.equal(out.data.status,undefined);assert.equal(f.form.elements.phone.opts.maxLength,40);});
+test('staff services reuse one read model and include ETA as an actual record field',async()=>{const h=harness('staff',null);await h.screens.get('staff:air_ddp')();assert.equal(h.requests[0].path,'/bookings?service=air_ddp');assert.ok(h.tables[0].cols.some(c=>c[1]==='ETA'));assert.equal(h.forms.length,0);});
+test('all review message columns exist and the review script never reads a login field',()=>{const h=harness('customer',null);for(const source of Object.keys(h.messages.en))for(const lang of Object.keys(h.messages))assert.ok(h.messages[lang][source],source+'/'+lang);assert.doesNotMatch(source,/querySelector|loginForm|input\[name=(?:password|email|code)\]/);});
