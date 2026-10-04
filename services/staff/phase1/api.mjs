@@ -1,3 +1,4 @@
+import {bookingApi} from '../phase2/bookings.mjs';
 import {one,all,id,text,uuid,must,fail,audit,optimistic} from './core.mjs';
 import {can,requirePermission,companyFor} from './rbac.mjs';
 import {menu,extraModules} from './catalog.mjs';
@@ -13,6 +14,7 @@ const meServiceCodes=a=>['air_ddp','sea_ddp','air_express','sea_lcl','sea_fcl','
 const safeUser=a=>({id:a.id,name:a.display_name,email:a.email,kind:a.kind,roles:a.roles,language:a.preferred_language});
 export async function api({db,context,auth,config,path,method,data,url,now=Date.now()}){
  const a=context.actor,write=method!=='GET',parts=path.split('/').filter(Boolean);
+ if(path==='/bookings'||path.startsWith('/bookings/'))return bookingApi({db,context,path,method,data,url,now});
  if(path==='/me'&&method==='GET')return {user:safeUser(a),csrf:context.csrf,preferences:await masters.preference(db,a),themes:await all(db,'SELECT id,code,name,tokens FROM themes WHERE active=true AND deleted_at IS NULL ORDER BY code'),menu:a.kind==='staff'?menu.filter(m=>can(a,m.id,'view')||(m.id==='settings'&&['users','roles','templates','outbox','logs','mail_accounts'].some(x=>can(a,x,'view')))):[],capabilities:a.kind==='staff'?Object.fromEntries([...new Set([...menu.map(m=>m.id),...extraModules])].map(m=>[m,['view','create','edit','approve','delete','export'].filter(action=>can(a,m,action))])):{},testMode:config.testMode};
  if(path==='/logout'&&method==='POST'){await auth.logout(db,context);return {ok:true};}
  if(path==='/preferences'&&method==='PUT')return masters.savePreference(db,a,data);
