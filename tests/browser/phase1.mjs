@@ -24,13 +24,15 @@ try{
   await page.goto(config.origin+'/'+kind+'/?lang='+locale);await page.locator('#loginForm input[name=email]').fill(email);
   if(kind==='staff')await page.locator('#loginForm input[name=password]').fill('Isolated-browser-password-0001');
   await page.locator('#loginForm button[type=submit]').click();await page.locator('#otpForm').waitFor({state:'visible'});
-  await page.locator('#otpForm input[name=code]').fill('1234');await page.locator('#otpForm button[type=submit]').click();await page.locator('#appView').waitFor({state:'visible'});check(kind+' login '+locale,await page.locator('#appView').isVisible());
+  await page.locator('#otpForm input[name=code]').fill('1234');await page.locator('#otpForm button[type=submit]').click();
+  try{await page.locator('#appView').waitFor({state:'visible',timeout:10000});}
+  catch(e){await page.screenshot({path:evidence+'/login-failure.png',fullPage:true});throw new Error('Login failed: '+await page.locator('#authError').innerText(),{cause:e});}
+  check(kind+' login '+locale,await page.locator('#appView').isVisible());
  }
  await login('staff','bayan@ukrshipping.com');
  check('staff shell has protected menu',await page.locator('#nav button').count()>5);
  await page.screenshot({path:evidence+'/staff-overview.png',fullPage:true});
- const modules=['tasks','masters','settings'];
- for(const name of modules){await page.evaluate(name=>window.UKRPortal.render(name),name);await page.waitForTimeout(150);check('no error on '+name,!(await page.locator('#error').inner_text()));}
+ for(const name of ['tasks','masters','settings']){await page.evaluate(name=>window.UKRPortal.render(name),name);await page.waitForTimeout(150);check('no error on '+name,!(await page.locator('#error').innerText()));}
  for(const width of [375,390,768,1024,1440]){await page.setViewportSize({width,height:1000});check('staff width '+width,await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));}
  await page.locator('#logout').click();await page.locator('#loginForm').waitFor({state:'visible'});
  for(const locale of ['en','ar','ru','fr','ur','hi','zh']){
@@ -43,6 +45,8 @@ try{
   await page.locator('#logout').click();await page.locator('#loginForm').waitFor({state:'visible'});
  }
  check('no JavaScript exceptions',errors.length===0);
- await writeFile(evidence+'/phase1-results.json',JSON.stringify({checks:checks.length,passed:checks,errors,usesRealPostgres:true,usesHttpServer:true,sendsRealEmail:false},null,2));
  console.log('UKR_BROWSER_PASS '+checks.length);
-}finally{if(browser)await browser.close();if(server)await new Promise(r=>server.close(r));await db.close();await admin.query('DROP SCHEMA '+schema+' CASCADE');await admin.close();}
+}finally{
+ await writeFile(evidence+'/phase1-results.json',JSON.stringify({checks:checks.length,passed:checks,errors,usesRealPostgres:true,usesHttpServer:true,sendsRealEmail:false},null,2));
+ if(browser)await browser.close();if(server)await new Promise(r=>server.close(r));await db.close();await admin.query('DROP SCHEMA '+schema+' CASCADE');await admin.close();
+}
