@@ -5,6 +5,7 @@ import {menu,extraModules} from './catalog.mjs';
 import * as masters from './masters.mjs';
 import * as users from './users.mjs';
 import * as customer from './customers.mjs';
+import * as portalAccess from './customer-portal-access.mjs';
 import * as work from './workflow.mjs';
 import * as rates from './rates.mjs';
 import * as mail from './mail.mjs';
@@ -29,6 +30,9 @@ export async function api({db,context,auth,config,path,method,data,url,now=Date.
   fail(403,'access_denied');
  }
  must(a.kind==='staff',403,'access_denied');
+ if(path==='/settings/customer-portal'&&method==='GET')return {items:await portalAccess.listPortalCompanies(db,a)};
+ if(parts[0]==='settings'&&parts[1]==='customer-portal'&&parts.length===3&&method==='PUT')return portalAccess.setPortalAccess(db,a,parts[2],data,now);
+ if(parts[0]==='settings'&&parts[1]==='customer-portal'&&parts.length===4&&parts[3]==='invite'&&method==='POST')return portalAccess.invitePortalCustomer(db,a,parts[2],data,now);
  if(path==='/overview'&&method==='GET'){
   requirePermission(a,'overview','view');const t=can(a,'tasks','view')?await work.tasks(db,a,{}):[],p=can(a,'approvals','view')?await work.approvals(db,a):[];
   const permitted=meServiceCodes(a);const jobs=await all(db,`SELECT b.id,b.status,b.assignee_id,s.code FROM bookings b JOIN services s ON s.id=b.service_id WHERE b.deleted_at IS NULL AND s.code=ANY($1::text[]) AND (s.code=ANY($2::text[]) OR b.assignee_id=$3)`,[permitted,permitted.filter(code=>a.super||a.grants.some(g=>g.module===code&&g.action==='view'&&g.scope==='all')),a.id]);
