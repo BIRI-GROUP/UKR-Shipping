@@ -39,6 +39,7 @@ U.register('staff:customers',async()=>{
  const search=raw('input');search.type='search';search.placeholder='Search company';search.setAttribute('aria-label','Search customer companies');
  const list=raw('div');box.append(search,list);
  function draw(){
+  list.replaceChildren();
   const query=search.value.trim().toLocaleLowerCase();
   const rows=out.items.filter(c=>[c.legal_name,c.owner_email].some(v=>String(v||'').toLocaleLowerCase().includes(query)));
   table(list,rows,[
