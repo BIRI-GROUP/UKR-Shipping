@@ -7,11 +7,13 @@ import {inspectStorage} from './phase1/deployment-check.mjs';
 import {requireSchema} from './phase1/db.mjs';
 import {createPortalHandler} from './phase1/http.mjs';
 
-export const release='portal-access-2026-10-04';
+export const release='ukr360-customer-pilot-2026-10-19';
 const assets={
  '/staff/':['../../apps/staff/portal.html','text/html; charset=utf-8'],
  '/customer/':['../../apps/customer/index.html','text/html; charset=utf-8'],
  '/portal.js':['../../apps/shared/portal.js','text/javascript; charset=utf-8'],
+ '/portal-customer-360.js':['../../apps/shared/portal-customer-360.js','text/javascript; charset=utf-8'],
+ '/portal-360.css':['../../apps/shared/portal-360.css','text/css; charset=utf-8'],
  '/portal-admin.js':['../../apps/shared/portal-admin.js','text/javascript; charset=utf-8'],
  '/portal-status.js':['../../apps/shared/portal-status.js','text/javascript; charset=utf-8'],
  '/portal.css':['../../apps/shared/portal.css','text/css; charset=utf-8'],
