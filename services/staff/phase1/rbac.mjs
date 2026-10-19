@@ -42,7 +42,7 @@ export async function validateAssignee(db,actor,userId,warehouseId){
 }
 export async function companyFor(db,actor){
   must(actor.kind==='customer',403,'access_denied');
-  return one(db,`SELECT c.id AS customer_id,c.status AS customer_status,m.id AS membership_id,m.role,m.status AS membership_status,co.id,co.legal_name,co.status,co.domain,co.domain_verified_at,co.country_code,co.address,co.phone,co.tax_number,co.version
+  return one(db,`SELECT c.id AS customer_id,c.status AS customer_status,m.id AS membership_id,m.role,m.status AS membership_status,co.id,co.legal_name,co.status,co.portal_enabled,co.domain,co.domain_verified_at,co.country_code,co.address,co.phone,co.tax_number,co.version
     FROM customers c LEFT JOIN customer_memberships m ON m.customer_id=c.id AND m.deleted_at IS NULL AND m.status<>'disabled'
     LEFT JOIN customer_companies co ON co.id=m.customer_company_id AND co.deleted_at IS NULL AND co.status<>'disabled'
     WHERE c.user_id=$1 AND c.deleted_at IS NULL`,[actor.id]);
