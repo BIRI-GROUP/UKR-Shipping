@@ -61,6 +61,23 @@ export async function listBookings(db,actor,params=new URLSearchParams()) {
   const rows=await all(db,baseSelect+' WHERE'+where+` ORDER BY b.eta ASC NULLS LAST,b.created_at DESC,b.id LIMIT $${n+1} OFFSET $${n+2}`,[...scope.values,page.limit,page.offset]);
   return {items:rows.map(a.kind==='customer'?customerBooking:staffBooking),total:count.total,limit:page.limit,offset:page.offset};
 }
+export async function bookingSummary(db,actor) {
+  const a=await fresh(db,actor),scope=await bookingScope(db,a);
+  const rows=await all(db,
+    'SELECT b.status,count(*)::int AS count FROM bookings b JOIN services s ON s.id=b.service_id WHERE b.deleted_at IS NULL AND '+
+    scope.sql+' GROUP BY b.status',scope.values);
+  const counts=Object.fromEntries(rows.map(x=>[x.status,x.count]));
+  const sum=keys=>keys.reduce((n,key)=>n+(counts[key]||0),0);
+  return {
+    in_transit:sum(['in_transit']),
+    booked:sum(['accepted']),
+    waiting_to_load:sum(['goods_received','ready_to_ship','consolidated','ready_for_collection']),
+    total_shipped:sum(['in_transit','arrived','customs_cleared','ready_for_delivery','out_for_delivery','delivered']),
+    awaiting_confirmation:sum(['submitted']),
+    total:sum(Object.keys(counts))
+  };
+}
+
 export async function getBooking(db,actor,bookingId) {
   const a=await fresh(db,actor);return detail(db,a,await allowedRow(db,a,bookingId));
 }
@@ -117,6 +134,7 @@ export async function updateETA(db,actor,bookingId,data,now=Date.now()) {
 }
 export async function bookingApi({db,context,path,method,data,url,now}) {
   const actor=context.actor;
+  if(path==='/bookings/summary'&&method==='GET')return bookingSummary(db,actor);
   if(path==='/bookings'&&method==='GET')return listBookings(db,actor,url.searchParams);
   if(path==='/bookings'&&method==='POST'){
     // The existing JSON transport uses a body request key, never email/OTP in a URL.
