@@ -1,5 +1,6 @@
 import {randomInt} from 'node:crypto';
 import {id,token,digest,hmac,same,seal,unseal,email,language,must,fail,one,audit} from './core.mjs';
+import {portalEmailAllowed} from './customer-portal-access.mjs';
 import {actorFor} from './rbac.mjs';
 import {enqueue} from './mail.mjs';
 export async function consumeLimit(db,key,limit,milliseconds,now){const row=await one(db,'SELECT * FROM auth_limits WHERE key=$1',[key]);if(row&&+new Date(row.window_end)>now){await db.query('UPDATE auth_limits SET hits=LEAST(hits+1,$2) WHERE key=$1',[key,limit+1]);return row.hits<limit;}await db.query('INSERT INTO auth_limits(key,hits,window_end) VALUES($1,1,$2) ON CONFLICT(key) DO UPDATE SET hits=1,window_end=EXCLUDED.window_end',[key,new Date(now+milliseconds)]);return true;}
@@ -27,7 +28,8 @@ export async function createAuth({store,config,passwords,clock=Date.now}){
       if(previous&&+new Date(previous.resend_after)>now)return {error:'resend_wait'};
       let user=await one(db,'SELECT * FROM users WHERE email=$1 AND deleted_at IS NULL',[address]);
       if(kind==='staff'&&credentialOK&&legacy){const current=await one(db,'SELECT * FROM staff_users WHERE id=$1',[legacy.id]);if(current?.active&&current.password_hash===legacy.password_hash)user=await syncStaff(db,current);else credentialOK=false;}
-      const eligible=kind==='staff'?!!(credentialOK&&legacy?.active&&user?.kind==='staff'&&user.state==='active'):(!user||(user.kind==='customer'&&['active','pending'].includes(user.state)));
+      const customerAllowed=kind==='customer'&&await portalEmailAllowed(db,address,now);
+      const eligible=kind==='staff'?!!(credentialOK&&legacy?.active&&user?.kind==='staff'&&user.state==='active'):(customerAllowed&&(!user||(user.kind==='customer'&&['active','pending'].includes(user.state))));
       await db.query('UPDATE otp_codes SET invalidated_at=$1 WHERE email=$2 AND kind=$3 AND consumed_at IS NULL AND invalidated_at IS NULL',[new Date(now),address,kind]);
       await db.query(`INSERT INTO otp_codes(id,challenge_hash,email,kind,user_id,code_hash,auth_version,credential_hash,eligible,expires_at,resend_after,test_mode,language)
         VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)`,[challengeId,digest(raw),address,kind,user?.id||null,hmac(config,'otp:'+challengeId,code),user?.auth_version||null,kind==='staff'&&legacy?digest(legacy.password_hash):null,eligible,new Date(now+600000),new Date(now+60000),config.testMode,locale]);
@@ -43,10 +45,11 @@ export async function createAuth({store,config,passwords,clock=Date.now}){
       if(!current||current.consumed_at||current.invalidated_at||+new Date(current.expires_at)<=now)return {error:'invalid_code'};
       if(+new Date(current.resend_after)>now)return {error:'resend_wait'};
       const limits=await Promise.all([consumeLimit(db,hmac(config,'begin:email',old.email),6,900000,now),consumeLimit(db,hmac(config,'begin:ip',ip),200,900000,now)]);if(!limits.every(Boolean))return {error:'too_many_requests'};
+      const eligible=old.eligible&&(old.kind!=='customer'||await portalEmailAllowed(db,old.email,now));
       const nextId=id();await db.query('UPDATE otp_codes SET invalidated_at=$1 WHERE email=$2 AND kind=$3 AND consumed_at IS NULL AND invalidated_at IS NULL',[new Date(now),old.email,old.kind]);
       await db.query(`INSERT INTO otp_codes(id,challenge_hash,email,kind,user_id,code_hash,auth_version,credential_hash,eligible,expires_at,resend_after,test_mode,language)
-        VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)`,[nextId,digest(fresh),old.email,old.kind,old.user_id,hmac(config,'otp:'+nextId,code),old.auth_version,old.credential_hash,old.eligible,new Date(now+600000),new Date(now+60000),config.testMode,old.language]);
-      if(old.eligible){const u=old.user_id?await one(db,'SELECT preferred_language FROM users WHERE id=$1',[old.user_id]):null;await enqueue(db,config,{code:'auth_otp',to:old.email,locale:old.language||u?.preferred_language||'en',variables:{otp:code},sensitive:true,dedupeKey:'otp:'+nextId,expiresAt:new Date(now+600000),actorId:old.user_id});}
+        VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)`,[nextId,digest(fresh),old.email,old.kind,old.user_id,hmac(config,'otp:'+nextId,code),old.auth_version,old.credential_hash,eligible,new Date(now+600000),new Date(now+60000),config.testMode,old.language]);
+      if(eligible){const u=old.user_id?await one(db,'SELECT preferred_language FROM users WHERE id=$1',[old.user_id]):null;await enqueue(db,config,{code:'auth_otp',to:old.email,locale:old.language||u?.preferred_language||'en',variables:{otp:code},sensitive:true,dedupeKey:'otp:'+nextId,expiresAt:new Date(now+600000),actorId:old.user_id});}
       return {raw:fresh,cooldownSeconds:60};
     });if(result.error)fail(result.error==='invalid_code'?400:429,result.error);return result;
   }
@@ -56,7 +59,7 @@ export async function createAuth({store,config,passwords,clock=Date.now}){
       const challenge=await one(db,'SELECT * FROM otp_codes WHERE challenge_hash=$1',[digest(raw||'')]);
       if(!challenge||challenge.consumed_at||challenge.invalidated_at||+new Date(challenge.expires_at)<=now||challenge.attempts>=5)return {error:'invalid_code'};
       await db.query('UPDATE otp_codes SET attempts=attempts+1 WHERE id=$1',[challenge.id]);
-      const valid=typeof code==='string'&&(config.testMode?/^1234$/:/^\d{6}$/).test(code)&&same(hmac(config,'otp:'+challenge.id,code),challenge.code_hash)&&challenge.eligible&&challenge.test_mode===config.testMode;
+      const valid=typeof code==='string'&&(config.testMode?/^1234$/:/^\d{6}$/).test(code)&&same(hmac(config,'otp:'+challenge.id,code),challenge.code_hash)&&challenge.eligible&&(challenge.kind!=='customer'||await portalEmailAllowed(db,challenge.email,now))&&challenge.test_mode===config.testMode;
       if(!valid){await audit(db,null,'auth.code_rejected','otp_codes',challenge.id);return {error:'invalid_code'};}
       let user=await one(db,'SELECT * FROM users WHERE email=$1 AND deleted_at IS NULL',[challenge.email]);
       if(challenge.kind==='staff'){
@@ -83,6 +86,7 @@ export async function createAuth({store,config,passwords,clock=Date.now}){
     const session=await one(db,'SELECT * FROM sessions WHERE token_hash=$1 AND kind=$2 AND revoked_at IS NULL AND deleted_at IS NULL AND expires_at>$3',[digest(raw),kind,new Date(clock())]);
     if(!session)fail(401,'sign_in_required');const actor=await actorFor(db,session.user_id);
     if(actor.kind!==kind||actor.auth_version!==session.auth_version)fail(401,'sign_in_required');
+    if(kind==='customer'&&!await portalEmailAllowed(db,actor.email,clock()))fail(401,'sign_in_required');
     if(kind==='staff'&&(!session.legacy_token_hash||!await one(db,'SELECT token_hash FROM staff_sessions WHERE token_hash=$1 AND expires_at>$2',[session.legacy_token_hash,clock()])))fail(401,'sign_in_required');
     if(mutation&&(!csrf||!same(session.csrf_hash,digest(csrf))))fail(403,'csrf_failed');
     return {actor,session,csrf:unseal(config,'csrf:'+session.id,session.csrf_token_ciphertext)};
