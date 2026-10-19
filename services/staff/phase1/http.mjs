@@ -8,6 +8,8 @@ const staticFiles={
  '/staff/':['../../../apps/staff/portal.html','text/html; charset=utf-8'],
  '/customer/':['../../../apps/customer/index.html','text/html; charset=utf-8'],
  '/portal.js':['../../../apps/shared/portal.js','text/javascript; charset=utf-8'],
+ '/portal-customer-360.js':['../../../apps/shared/portal-customer-360.js','text/javascript; charset=utf-8'],
+ '/portal-360.css':['../../../apps/shared/portal-360.css','text/css; charset=utf-8'],
  '/portal-admin.js':['../../../apps/shared/portal-admin.js','text/javascript; charset=utf-8'],
  '/portal.css':['../../../apps/shared/portal.css','text/css; charset=utf-8'],
  '/logo.svg':['../../../site/assets/ukr-shipping-blue.svg','image/svg+xml']
