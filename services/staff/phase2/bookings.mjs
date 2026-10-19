@@ -11,7 +11,7 @@ const baseSelect='SELECT b.*,s.code AS service_code FROM bookings b JOIN service
 async function customerScope(db,a) {
   const c=await companyFor(db,a);
   must(c?.customer_id&&['pending','approved'].includes(c.customer_status)&&c.id&&
-    c.membership_status==='active'&&['pending','approved'].includes(c.status),403,'access_denied');
+    c.membership_status==='active'&&c.status==='approved'&&c.portal_enabled===true,403,'access_denied');
   // An unapproved company owner may submit and read its own requests, not another customer's cargo.
   must(c.status==='approved'||c.role==='owner',403,'company_not_approved');return c;
 }
