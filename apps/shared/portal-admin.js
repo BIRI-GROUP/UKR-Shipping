@@ -29,4 +29,51 @@ async function ruleEditor(row){const look=await lookup();dialog('Task rule',div=
 async function approvalsPage(){const box=clear('Approvals'),out=await request('/approvals');if(has('approvals','create'))box.append(button('Request approval',async()=>{const look=await lookup();dialog('Request approval',div=>{const f=raw('form');field(f,'description','Description',{type:'textarea'});field(f,'reason','Reason',{required:true});field(f,'role_id','Approving role',{options:look.roles.map(x=>({value:x.id,label:x.name}))});submit(f,'Submit',()=>request('/approvals',data(f)));div.append(f);});}));table(box,out.items,[['reference','Reference'],['kind','Type'],['status','Status'],['reason','Reason']],(td,row)=>td.append(button('Review',()=>approvalDetail(row.id))));}
 async function approvalDetail(id){const row=await request('/approvals/'+id);dialog('Approval review',div=>{div.append(raw('h3',row.reference),raw('p',row.reason),raw('pre',JSON.stringify(row.payload,null,2)));table(div,row.history,[['action','Action'],['note','Note']]);if(['approved','cancelled'].includes(row.status))return;const f=raw('form');const opts=row.created_by===state.me.user.id?(row.status==='returned'?['resubmitted','cancelled']:['cancelled']):['approved','returned'];field(f,'action','Decision',{options:options(opts)});field(f,'note','Decision note',{required:true,type:'textarea'});if(row.kind==='customer_company'){field(f,'verified_domain','Staff-verified corporate domain');field(f,'domain_evidence_confirmed','Domain ownership checked',{type:'checkbox'});}submit(f,'Save',()=>request('/approvals/'+row.id,{...data(f),version:row.version,...(row.kind==='customer_company'?{domain_evidence_confirmed:f.elements.domain_evidence_confirmed.checked}:{})},'PUT'));div.append(f);});}U.register('staff:approvals',()=>approvalsPage());
 U.register('staff:exchange_rates',async()=>{const box=clear('Currencies & Exchange Rates'),out=await request('/exchange-rates');box.append(copy('p','Review the new rate beside the previous active rate.','muted'));table(box,out.items,[['code','Rule'],[r=>r.base_currency+'/'+r.quote_currency,'Pair'],[r=>r.current.available?r.current.rate.rate:t('Not available'),'Current rate'],[r=>r.current.grace?U.formatDate(r.current.usable_until):'','Grace until']],(td,row)=>{if(has('exchange_rates','create'))td.append(button('Enter rate',()=>dialog('Confirm exchange rate',div=>{const f=raw('form');field(f,'rate','New rate',{required:true});const result=raw('section');submit(f,'Compare rates',()=>request('/exchange-rates/preview',{rule_id:row.id,rate:f.elements.rate.value}),async preview=>{result.replaceChildren(raw('p','Previous: '+(preview.previous_rate||'None')+' | New: '+preview.proposed_rate),raw('p','Change: '+(preview.change_percent||'N/A')+'%'),copy('p',preview.requires_approval?'Manager approval required':'Within the permitted threshold'),button('Confirm rate',async()=>{await request('/exchange-rates/confirm',{confirmation_id:preview.id,confirmed:true});$('editor').close();await U.render('exchange_rates');}));});div.append(f,result);})));td.append(button('History',()=>dialog('Rate history',div=>table(div,row.history,[['rate','Rate'],['rate_date','Date'],['status','Status']]))));});});
+
+/* Owner-controlled access for approved customer companies. Portal access is OFF by default. */
+U.register('staff:customers',async()=>{
+ const box=clear('Customer Companies & Portal Access');
+ if(!has('customers','view'))return empty(box,'This service is not available. Contact UKR.');
+ box.append(raw('p','Enable the portal only for an approved company. No online prices are published; customers may request quotations.','muted'));
+ const out=await request('/settings/customer-portal');
+ const search=raw('input');search.type='search';search.placeholder='Search company';search.setAttribute('aria-label','Search customer companies');
+ const list=raw('div');box.append(search,list);
+ function draw(){
+  const query=search.value.trim().toLocaleLowerCase();
+  const rows=out.items.filter(c=>[c.legal_name,c.owner_email].some(v=>String(v||'').toLocaleLowerCase().includes(query)));
+  table(list,rows,[
+    ['legal_name','Company'],['status','Approval status'],
+    [c=>c.portal_enabled?'ON':'OFF','Portal Access'],
+    [c=>c.owner_email||'No owner email','Approved email'],
+    [c=>String(c.active_members||0),'Active users']
+  ],(td,c)=>{
+   if(!has('customers','edit'))return;
+   const toggle=button(c.portal_enabled?'Turn OFF':'Turn ON',async()=>{
+    if(!window.confirm((c.portal_enabled?'Disable':'Enable')+' portal access for '+c.legal_name+'?'))return;
+    await request('/settings/customer-portal/'+encodeURIComponent(c.id),{enabled:!c.portal_enabled,version:c.version},'PUT');
+    await U.render('customers');
+   },c.portal_enabled?'secondary':'');
+   if(!c.portal_enabled&&c.status!=='approved')toggle.disabled=true;
+   td.append(toggle);
+   if(c.portal_enabled){
+    td.append(button('Invite email',()=>dialog('Invite approved customer email',div=>{
+     div.append(raw('p','Only the exact invited email may obtain an OTP. Invitation does not send an email or grant access to other companies.','muted'));
+     const form=raw('form');
+     field(form,'email','Customer email',{type:'email',required:true});
+     field(form,'role','Access',{options:[
+       {value:'staff',label:'Customer team member'},
+       {value:'view_only',label:'View only'}]});
+     submit(form,'Create invitation',async()=>{
+      const result=await request('/settings/customer-portal/'+encodeURIComponent(c.id)+'/invite',data(form));
+      $('message').textContent='Invite prepared for '+result.email+'. Share the customer login address directly; email was not sent.';
+      return result;
+     });
+     div.append(form);
+    })));
+   }
+  });
+ }
+ search.addEventListener('input',draw);draw();
+});
+
 })();
